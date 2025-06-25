@@ -58,6 +58,19 @@
             "env": {
                 "PATH": "$PATH:${command:cmake.launchTargetDirectory}",
             },
-        }
+        },
+        {
+            "name": "nnvg py_c", // configuration that will be used when debugging python test via test explorer extension
+            "type": "debugpy",
+            "request": "launch",
+            "module": "nunavut",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}/src",
+            "args": ["--target-language","py_c", "--experimental-languages", "--verbose",
+                    "--outdir", "${workspaceFolder}/nunavut_out",
+                     "${workspaceFolder}/submodules/public_regulated_data_types/uavcan"]
+
+        },
     ]
 }

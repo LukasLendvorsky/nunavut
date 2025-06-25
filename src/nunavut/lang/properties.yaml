@@ -374,3 +374,59 @@ nunavut.lang.html:
     has_standard_namespace_files: true
     namespace_is_composite_type: false
     namespace_file_stem: index
+
+
+nunavut.lang.py_c:
+    extension: .h
+    stable_support: true
+    namespace_file_stem: _namespace_
+    has_standard_namespace_files: true
+    namespace_is_composite_type: true
+    support_namespace: nunavut.support
+    indent: 4
+    prefer_system_includes: true
+    reserved_identifiers: *nunavut_lang_c_reserved_identifiers
+    token_encoding_rules_by_identifier_type:
+        all:
+            - '\s+'
+            - '(^\d{1})'
+            - '([^a-zA-Z0-9_]+)'
+    whitespace_encoding_char: _
+    reserved_token_patterns_by_type:
+        all:
+            - (^__)|(^_[A-Z])
+        function:
+            - ^(is|to|str|mem|wcs)[a-z]
+        typedef:
+            - ^u?int[a-zA-Z_0-9]*_t
+            - ^(atomic_|memory_)[a-z]
+            - ^(cnd_|mtx_|thrd_|tss_)[a-z]
+        macro: *nunavut_lang_c_reserved_token_patterns_by_type_macro
+        enum:
+            - ^(memory_order_)[a-z]
+            - ^(cnd_|mtx_|thrd_|tss_)[a-z]
+    enable_stropping: true
+    encoding_prefix: zX
+    stropping_prefix: _
+    stropping_suffix:
+    use_standard_types: true
+    limit_empty_lines: 1
+    trim_trailing_whitespace: true
+    named_types:
+        'boolean': 'bool'
+        'unsigned_length': 'size_t'
+        'byte': 'uint8_t'
+        'unsigned_bit_length': 'size_t'
+        'error_type': 'int8_t'
+        'float_32': 'float'
+        'float_64': 'double'
+    named_values:
+        'true': 'true'
+        'false': 'false'
+        'null': 'NULL'
+    options:
+        target_endianness: any
+        omit_float_serialization_support: false
+        enable_serialization_asserts: false
+        enable_override_variable_array_capacity: false
+        cast_format: "(({type}) {value})"
