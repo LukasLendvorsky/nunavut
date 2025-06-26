@@ -28,7 +28,7 @@ def test_support_headers(gen_paths, lang_key):  # type: ignore
     )
     assert ln is not None
     expected_header = (
-        gen_paths.out_dir / Path("nunavut") / Path("support") / Path("serialization").with_suffix(ln.extension)
+        gen_paths.out_dir / Path("nunavut") / Path("support") / Path("serialization").with_suffix(ln.default_extension)
     )
     root_namespace_dir = gen_paths.dsdl_dir / Path("basic")
     generate_types(

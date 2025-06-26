@@ -202,7 +202,7 @@ class Namespace(pydsdl.Any):
     # +-----------------------------------------------------------------------+
     def _add_data_type(self, dsdl_type: pydsdl.CompositeType, extension: str) -> None:
         self._data_type_to_outputs[dsdl_type] = pathlib.Path(self._base_output_path) / IncludeGenerator.make_path(
-            dsdl_type, self._language_context.get_target_language(), extension
+            dsdl_type, self._language_context.get_target_language()
         )
 
     def _add_nested_namespace(self, nested: "Namespace") -> None:
