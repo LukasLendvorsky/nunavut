@@ -10,6 +10,7 @@
 
 import enum
 import fractions
+import pathlib
 import re
 import typing
 
@@ -1100,3 +1101,18 @@ def filter_is_zero_cost_primitive(language: Language, t: pydsdl.PrimitiveType) -
 
     """
     return str(is_zero_cost_primitive(language, t))
+
+
+@template_language_filter(__name__)
+def filter_type_relative_path(language: Language, t: pydsdl.CompositeType) -> str:
+    return IncludeGenerator.make_path(t, language, None).as_posix()
+
+@template_language_filter(__name__)
+def filter_type_relative_path(language: Language, t: pydsdl.CompositeType) -> str:
+    return IncludeGenerator.make_path(t, language, None).as_posix()
+
+
+
+@template_language_filter(__name__)
+def filter_namespace_relative_path(language: Language, t):
+    return pathlib.Path(*IncludeGenerator._make_ns_list(language, t)) / "all.h"

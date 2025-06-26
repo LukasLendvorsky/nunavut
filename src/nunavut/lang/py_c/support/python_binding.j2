@@ -1,0 +1,25 @@
+
+template <typename T, size_t buffer_size, auto serialize_func>
+nb::bytes python_serialize(T &status) {
+    uint8_t buffer[buffer_size];
+    size_t size = sizeof(buffer);
+    auto res = serialize_func(&status, buffer, &size);
+    if (res != NUNAVUT_SUCCESS) {
+        throw std::invalid_argument("Serialization failed with error code: " + std::to_string(res));
+    }
+
+    return nb::bytes(reinterpret_cast<const char *>(buffer), size);
+}
+
+template <typename T, auto deserialize_func>
+T python_deserialize(const nb::bytes &data) {
+    T status;
+    size_t size = data.size();
+    auto res = deserialize_func(&status, reinterpret_cast<const uint8_t *>(data.data()), &size);
+
+    if (res != NUNAVUT_SUCCESS) {
+        throw std::invalid_argument("Deserialization failed with error code: " + std::to_string(res));
+    }
+
+    return status;
+}

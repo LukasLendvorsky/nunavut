@@ -2,17 +2,31 @@
 //
 // Generated at:  {{ now_utc }} UTC
 // Namespace:     {{ T.full_name }}
-{% if T.get_nested_types() or T.get_nested_namespaces()%}
-    {%- for t, _ in T.get_nested_types() %}
-#include "{{ t|short_reference_name }}.h"
-    {%- endfor %}
+
+{% set include_guard -%}{{T.full_name | ln.c.macrofy}}_INCLUDED_{%- endset -%}
+#ifndef {{ include_guard }}
+#define {{ include_guard }}
+
+{%- for t, _ in T.get_nested_types() %}
+#include "{{ t | type_relative_path }}"
+{%- endfor %}
 
 {% for type in T.get_nested_namespaces()%}
-#include "{{ type.full_name }}.h"
+#include "{{ type | namespace_relative_path }}"
 {% endfor %}
 
 
 
-{%- else %}
-# There are no data types in this namespace. There may be data types in nested namespaces.
-{%- endif %}
+void generate_{{ T | macrofy}}(nanobind::module_ & m){
+    // export all types in this namespace
+    {%- for t, _ in T.get_nested_types() %}
+    export_{{ t | full_reference_name }}(m);
+    {%- endfor %}
+
+    // export all nested namespaces
+    {%- for t in T.get_nested_namespaces()%}
+    export_{{ t | macrofy }}(m);
+    {% endfor %}
+}
+
+#endif // {{ include_guard }}

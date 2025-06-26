@@ -379,7 +379,7 @@ nunavut.lang.html:
 nunavut.lang.py_c:
     extension: .h
     stable_support: true
-    namespace_file_stem: _namespace_
+    namespace_file_stem: all
     has_standard_namespace_files: true
     namespace_is_composite_type: true
     support_namespace: nunavut.support
