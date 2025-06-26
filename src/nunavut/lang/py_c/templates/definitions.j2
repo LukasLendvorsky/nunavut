@@ -41,19 +41,18 @@ static_assert({{ ref }}_EXTENT_BYTES_ >= {{ ref }}_SERIALIZATION_BUFFER_SIZE_BYT
 
 
 {% macro _define_export_function(t) %}
-#include <nunavut/support/python_binding.h>
 
-void export_{{ t | full_reference_name }}(nanobind::module_ m)
+void export_type_{{ t | full_reference_name }}(nanobind::module_ m)
 {
-    nb::class_<{{ t | full_reference_name }}>(m, "{{ t | full_reference_name }}")
-        .def(nb::init<>())
+    nanobind::class_<{{ t | full_reference_name }}>(m, "{{ t | full_reference_name }}")
+        .def(nanobind::init<>())
 
 {%- for f in t.fields_except_padding %}
         .def_rw("{{ f.name }}", &{{ t | full_reference_name }}::{{ f.name | id }})
 {%- endfor %}
-        .def("__serialize__", &serialize<{{ t | full_reference_name }}, {{ t | full_reference_name }}_SERIALIZATION_BUFFER_SIZE_BYTES_, {{ t | full_reference_name }}_serialize_>)
-        .def("__deserialize__", &deserialize<{{ t | full_reference_name }}, {{ t | full_reference_name }}_deserialize_>);
-
+        .def("__serialize__", &python_serialize<{{ t | full_reference_name }}, {{ t | full_reference_name }}_SERIALIZATION_BUFFER_SIZE_BYTES_, {{ t | full_reference_name }}_serialize_>)
+        .def("__deserialize__", &python_deserialize<{{ t | full_reference_name }}, {{ t | full_reference_name }}_deserialize_>);
+}
 {% endmacro %}
 
 {# ----------------------------------------------------------------------------------------------------------------- #}

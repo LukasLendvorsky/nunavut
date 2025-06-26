@@ -382,7 +382,7 @@ nunavut.lang.py_c:
     namespace_file_stem: all
     has_standard_namespace_files: true
     namespace_is_composite_type: true
-    support_namespace: nunavut.support
+    support_namespace: ""
     indent: 4
     prefer_system_includes: true
     reserved_identifiers: *nunavut_lang_c_reserved_identifiers

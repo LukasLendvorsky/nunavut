@@ -1,0 +1,36 @@
+[build-system]
+requires = ["scikit-build-core >=0.4.3", "nanobind >= 2.0.0", "typing_extensions >= 4.9.0"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "python_dsdls_c"
+version = "0.0.1"
+requires-python = ">=3.10"
+authors = [
+    { name = "Lukáš Lendvorský", email = "lukas.lendvorsky@prusa3d.com" },
+]
+classifiers = [
+    "License :: GNUv3",
+]
+dependencies = ["pydsdl"]
+
+
+[tool.uv]
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "CMakeLists.txt" },
+    { file = "binding.cpp" },
+]
+dev-dependencies = [
+    "pytest",
+]
+
+
+[tool.scikit-build]
+cmake.version = ">=3.27"
+wheel.py-api="cp312"
+
+build-dir="build/{wheel_tag}"
+
+# include __init__.py script from this folder, to load this module in more efficient manner
+wheel.packages = ["python_dsdls_c"]

@@ -39,8 +39,11 @@ def list_support_files(resource_type: ResourceType = ResourceType.ANY) -> typing
 
     :return: A list of C support header resources.
     """
-    # The c support only has serialization support resources
-    if resource_type not in (ResourceType.ANY, ResourceType.SERIALIZATION_SUPPORT):
-        return empty_list_support_files()
+    support_dir = pathlib.Path(__file__).parent
+
+    if resource_type in (ResourceType.ANY, ResourceType.TYPE_SUPPORT ) :
+        for path in support_dir.rglob("*.j2"):
+            yield path
     else:
-        return iter_package_resources(__name__, ".h", ".j2")
+        for path in support_dir.rglob("*.h.j2"):
+            yield path

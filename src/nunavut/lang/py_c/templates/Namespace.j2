@@ -17,15 +17,15 @@
 
 
 
-void generate_{{ T | macrofy}}(nanobind::module_ & m){
+void export_namespace_{{ T | macrofy}}(nanobind::module_ & m){
     // export all types in this namespace
     {%- for t, _ in T.get_nested_types() %}
-    export_{{ t | full_reference_name }}(m);
+    export_type_{{ t | full_reference_name }}(m);
     {%- endfor %}
 
     // export all nested namespaces
     {%- for t in T.get_nested_namespaces()%}
-    export_{{ t | macrofy }}(m);
+    export_namespace_{{ t | macrofy }}(m);
     {% endfor %}
 }
 
