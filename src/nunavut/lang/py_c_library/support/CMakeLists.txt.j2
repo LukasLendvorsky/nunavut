@@ -67,18 +67,17 @@ if(NOT CMAKE_CROSSCOMPILING AND NOT DEFINED ENV{OVERRIDE_PYTHON_INCLUDE_DIRS})
     MODULE
     python_dsdls_impl
     OUTPUT
-    python_dsdls_impl.pyi
+    stubs
     PYTHON_PATH
     $<TARGET_FILE_DIR:python_dsdls_impl>
     DEPENDS
     python_dsdls_impl
     MARKER_FILE
-    py.typed
+    stubs/py.typed
+    RECURSIVE
     )
 
   add_dependencies(python_dsdls python_dsdls_impl_stub)
 
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/py.typed
-                ${CMAKE_CURRENT_BINARY_DIR}/python_dsdls_impl.pyi DESTINATION python_dsdls
-          )
+  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/stubs/ DESTINATION python_dsdls)
 endif()

@@ -5,10 +5,10 @@
 #include <serialization.h>
 
 template <typename T, size_t buffer_size, auto serialize_func>
-nanobind::bytes python_serialize(T &status) {
+nanobind::bytes python_serialize(const T &instance) {
     uint8_t buffer[buffer_size];
     size_t size = sizeof(buffer);
-    auto res = serialize_func(&status, buffer, &size);
+    auto res = serialize_func(&instance, buffer, &size);
     if (res != NUNAVUT_SUCCESS) {
         throw std::invalid_argument("Serialization failed with error code: " + std::to_string(res));
     }

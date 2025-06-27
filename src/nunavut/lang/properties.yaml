@@ -376,9 +376,9 @@ nunavut.lang.html:
     namespace_file_stem: index
 
 
-nunavut.lang.py_c:
+nunavut.lang.py_c_library:
     extension: .h
-    stable_support: true
+    stable_support: false
     namespace_file_stem: all
     has_standard_namespace_files: true
     namespace_is_composite_type: true
@@ -430,3 +430,21 @@ nunavut.lang.py_c:
         enable_serialization_asserts: false
         enable_override_variable_array_capacity: false
         cast_format: "(({type}) {value})"
+
+
+nunavut.lang.py_c_python:
+    extension: .py
+    stable_support: false
+    has_standard_namespace_files: true
+    namespace_is_composite_type: true
+    namespace_file_stem: __init__
+    token_encoding_rules_by_identifier_type:
+        all:
+            - '^\d{1}'
+            - '[^a-zA-Z0-9_]+'
+    whitespace_encoding_char: _
+    enable_stropping: true
+    encoding_prefix: zX
+    stropping_suffix: _
+    limit_empty_lines: 1
+    trim_trailing_whitespace: true
