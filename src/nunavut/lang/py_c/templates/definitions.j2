@@ -42,13 +42,30 @@ static_assert({{ ref }}_EXTENT_BYTES_ >= {{ ref }}_SERIALIZATION_BUFFER_SIZE_BYT
 
 {% macro _define_export_function(t) %}
 
-void export_type_{{ t | full_reference_name }}(nanobind::module_ m)
+void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
 {
     nanobind::class_<{{ t | full_reference_name }}>(m, "{{ t | full_reference_name }}")
         .def(nanobind::init<>())
-
-{%- for f in t.fields_except_padding %}
-        .def_rw("{{ f.name }}", &{{ t | full_reference_name }}::{{ f.name | id }})
+{%- for f in t.fields_except_padding -%}
+    {%- if f.data_type.field_type is PrimitiveType %}
+        .def_rw("{{ f.name }}", &{{ t | full_reference_name }}::{{ f.name | id }}) // primitive type
+    {%- elif f.data_type is CompositeType %}
+        .def_rw("{{ f.name }}", &{{ t | full_reference_name }}::{{ f.name | id }}) // composite type
+    {%- elif f.data_type is FixedLengthArrayType -%}
+        {%- if f.data_type.element_type is BooleanType %}
+        //.def_rw("{{ f.name }}", &{{ t | full_reference_name }}::{{ f.name | id }}_bitpacked_) // fixed-length boolean array
+        {%- else %}
+        //.def_rw("{{ f.name }}", &{{ t | full_reference_name }}::{{ f.name | id }}) // fixed-length array
+        {%- endif -%}
+    {%- elif f.data_type is VariableLengthArrayType -%}
+        {%- if f.data_type.element_type is BooleanType %}
+        //.def_rw("{{ f.name }}", &{{ t | full_reference_name }}::bitpacked) // variable-length boolean array
+        {%- else %}
+        //todo: variable array
+        {%- endif -%}
+    {%- else -%}
+        // todo: unsupported field type {{ f.data_type }}
+    {%- endif %}
 {%- endfor %}
         .def("__serialize__", &python_serialize<{{ t | full_reference_name }}, {{ t | full_reference_name }}_SERIALIZATION_BUFFER_SIZE_BYTES_, {{ t | full_reference_name }}_serialize_>)
         .def("__deserialize__", &python_deserialize<{{ t | full_reference_name }}, {{ t | full_reference_name }}_deserialize_>);

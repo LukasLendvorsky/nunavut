@@ -7,5 +7,5 @@ NB_MODULE(python_dsdls_impl, m) {
     m.doc() = "Python extension that provides fast access to dsdls data types, implemented in C";
 
 
-    generate_namespace_UAVCAN(m);
+    export_namespace_UAVCAN(m);
 }
