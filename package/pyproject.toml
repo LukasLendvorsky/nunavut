@@ -1,0 +1,22 @@
+[build-system]
+requires = ["scikit-build-core >=0.4.3", "nanobind @ git+https://github.com/LukasLendvorsky/nanobind.git@add_recursive_support_to_cmake", "typing_extensions >= 4.9.0"]
+build-backend = "build_dsdls"
+backend-path = ["."]
+
+[project]
+name = "python_dsdls_c"
+version = "0.0.1"
+requires-python = ">=3.10"
+authors = [
+    { name = "Lukáš Lendvorský", email = "lukas.lendvorsky@prusa3d.com" },
+]
+classifiers = [
+    "License :: GNUv3",
+]
+
+[tool.scikit-build]
+cmake.version = ">=3.27"
+cmake.source-dir = "./generated_c/"
+wheel.py-api="cp312"
+wheel.packages = ["generated_py/uavcan"]
+build-dir="build/{wheel_tag}"
