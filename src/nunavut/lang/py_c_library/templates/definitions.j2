@@ -68,7 +68,16 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
     {%- endif %}
 {%- endfor %}
         .def("__serialize__", &python_serialize<{{ t | full_reference_name }}, {{ t | full_reference_name }}_SERIALIZATION_BUFFER_SIZE_BYTES_, {{ t | full_reference_name }}_serialize_>)
-        .def_static("__deserialize__", &python_deserialize<{{ t | full_reference_name }}, {{ t | full_reference_name }}_deserialize_>);
+        .def_static("__deserialize__", &python_deserialize<{{ t | full_reference_name }}, {{ t | full_reference_name }}_deserialize_>)
+        {%- for constant in t.constants %}
+        .def_prop_ro_static("{{ constant.name }}", [](nanobind::handle){return {{ constant | constant_value }};})
+        {%- endfor %}
+
+        .def_prop_ro_static("_EXTENT_BYTES_", [](nanobind::handle){return {{ t | full_reference_name }}_EXTENT_BYTES_;})
+        {% if t.has_fixed_port_id %}
+        .def_prop_ro_static("_FIXED_PORT_ID_", [](nanobind::handle){return {{ t | full_reference_name }}_FIXED_PORT_ID_;})
+        {% endif %}
+        ;
 }
 {% endmacro %}
 
