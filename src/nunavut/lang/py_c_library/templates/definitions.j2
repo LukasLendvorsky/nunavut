@@ -46,6 +46,42 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
 {
     nanobind::class_<{{ t | full_reference_name }}>(m, "{{ t | short_reference_name }}")
         .def(nanobind::init<>())
+        .def("__init__",
+             []({{ t | full_reference_name }}* self{%- if t.fields_except_padding | length -%},{%- endif -%}
+{%- for f in t.fields_except_padding -%}
+    {%- if f.data_type is PrimitiveType %}
+                {{ f.data_type | type_from_primitive }} {{ f.name | id }}{%- if not loop.last %},{%- endif %} // PrimitiveType
+    {%- elif f.data_type is CompositeType %}
+                {{ f.data_type | full_reference_name }} {{ f.name | id }}{%- if not loop.last %},{%- endif %} // CompositeType
+    {%- elif f.data_type is FixedLengthArrayType %}
+                int {{ f.name | id }}{%- if not loop.last %},{%- endif %} // FixedLengthArrayType
+    {%- elif f is VariableLengthArrayType %}
+                int {{ f.name | id }}{%- if not loop.last %},{%- endif %} // VariableLengthArrayType
+    {%- else -%}
+        {%- assert False %}{# Not a valid field type. #}
+    {%- endif -%}
+{%- endfor %}
+             ) {
+                {{ t | full_reference_name }}_initialize_(self);
+{%- for f in t.fields_except_padding -%}
+    {%- if f.data_type is PrimitiveType %}
+                self->{{ f.name | id }} = {{ f.name | id }};
+    {%- elif f.data_type is CompositeType %}
+                self->{{ f.name | id }} = {{ f.name | id }};
+    {%- elif f.data_type is FixedLengthArrayType %}
+                // todo: fixed-length array
+    {%- elif f is VariableLengthArrayType %}
+                // todo: variable-length array
+    {%- else -%}
+        {%- assert False %}{# Not a valid field type. #}
+    {%- endif -%}
+{%- endfor %}
+             }
+             {%- if t.fields_except_padding | length -%},{%- endif -%}
+{%- for f in t.fields_except_padding %}
+             nanobind::arg("{{ f.name }}").none(){%- if not loop.last %},{%- endif -%}
+{%- endfor %}
+         )
 {%- for f in t.fields_except_padding -%}
     {%- if f.data_type is PrimitiveType %}
         .def_rw("{{ f.name }}", &{{ t | full_reference_name }}::{{ f.name | id }}) // primitive type
