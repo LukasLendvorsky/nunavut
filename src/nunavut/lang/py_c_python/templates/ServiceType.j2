@@ -6,5 +6,10 @@
 
 {% extends "base.j2" -%}
 {%- block contents -%}
-#todo
+
+class {{ T|short_reference_name }}:
+
+    {{data_schema("Request", T.request_type) | indent }}
+    {{data_schema("Response", T.response_type) | indent }}
+
 {%- endblock -%}
