@@ -72,7 +72,6 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
         {%- for constant in t.constants %}
         .def_prop_ro_static("{{ constant.name }}", [](nanobind::handle){return {{ constant | constant_value }};})
         {%- endfor %}
-
         .def_prop_ro_static("_EXTENT_BYTES_", [](nanobind::handle){return {{ t | full_reference_name }}_EXTENT_BYTES_;})
         {% if t.has_fixed_port_id %}
         .def_prop_ro_static("_FIXED_PORT_ID_", [](nanobind::handle){return {{ t | full_reference_name }}_FIXED_PORT_ID_;})
