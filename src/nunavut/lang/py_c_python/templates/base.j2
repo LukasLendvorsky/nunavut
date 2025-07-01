@@ -17,34 +17,4 @@
 
 import python_dsdls.python_dsdls as python_dsdls
 
-{%- macro strict_type_annotation(t) -%}
-    {%-   if t is BooleanType   -%} bool
-    {%- elif t is IntegerType   -%} int
-    {%- elif t is FloatType     -%} float
-    {%- elif t is ArrayType     -%} iterator[{{ t.element_type|numpy_scalar_type }}]
-    {%- elif t is CompositeType -%} {{ t|short_reference_name }}
-    {%- else -%}{% assert False %}
-    {%- endif -%}
-{%- endmacro -%}
-
-{%- macro data_schema(name, T) -%}
-class {{ name }}(python_dsdls.{{ T|full_reference_name }}):
-    """
-    This class is a thin wrapper around the C implementation of the type.
-    It is used to provide a Python interface to the C implementation.
-    """
-    def __init__(self,
-{%- for f in T.fields_except_padding %}
-                 {{ f.name }} : {{strict_type_annotation(f.data_type)}} | None = None
-    {%- if not loop.last %}, {%- endif -%}
-{%- endfor -%}
-    ) -> None:
-        super().__init__()
-{%- for f in T.fields_except_padding %}
-        if {{ f.name }} is not None:
-            self.{{ f.name }} = {{ f.name }}
-{%- endfor -%}
-
-{% endmacro %}
-
 {% block contents %}{% endblock %}
