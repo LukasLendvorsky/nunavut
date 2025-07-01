@@ -10,6 +10,6 @@
 
 {%- block contents -%}
 
-{{data_schema(T | short_reference_name, T)}}
+{{T | short_reference_name}} = python_dsdls.{{ T|full_reference_name }}
 
 {%- endblock -%}

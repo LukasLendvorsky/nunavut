@@ -8,8 +8,7 @@
 {%- block contents -%}
 
 class {{ T|short_reference_name }}:
-
-    {{data_schema("Request", T.request_type) | indent }}
-    {{data_schema("Response", T.response_type) | indent }}
+    Request = python_dsdls.{{ T | full_reference_name }}.{{ T.request_type | short_reference_name }}
+    Response = python_dsdls.{{ T| full_reference_name }}.{{ T.response_type | short_reference_name }}
 
 {%- endblock -%}
