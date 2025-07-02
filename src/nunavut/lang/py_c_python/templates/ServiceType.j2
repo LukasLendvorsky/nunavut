@@ -6,9 +6,10 @@
 
 {% extends "base.j2" -%}
 {%- block contents -%}
+from typing import TypeAlias
 
 class {{ T|short_reference_name }}:
-    Request = python_dsdls.{{ T | full_reference_name }}.{{ T.request_type | short_reference_name }}
-    Response = python_dsdls.{{ T| full_reference_name }}.{{ T.response_type | short_reference_name }}
+    Request : TypeAlias = python_dsdls.{{ T | full_reference_name }}.{{ T.request_type | short_reference_name }}
+    Response : TypeAlias = python_dsdls.{{ T| full_reference_name }}.{{ T.response_type | short_reference_name }}
 
 {%- endblock -%}
