@@ -59,4 +59,13 @@ void set_fixed_bitpacked_array(uint8_t *to, const std::array<bool,N> &from) {
     }
 }
 
+template<size_t N>
+std::array<bool,N> get_fixed_bitpacked_array(const uint8_t *from) {
+    std::array<bool,N> out;
+    for (size_t i = 0; i < N; ++i) {
+        out[i] = (from[i / 8] & (1 << (i % 8))) != 0;
+    }
+    return out;
+}
+
 #endif //NUNAVUT_SUPPORT_PYTHON_BINDING_H_INCLUDED

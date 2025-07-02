@@ -133,7 +133,10 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
         .def_ro("{{ f.name }}", &{{ t | full_reference_name }}::{{ f.name | id }}) // composite type
     {%- elif f.data_type is FixedLengthArrayType -%}
         {%- if f.data_type.element_type is BooleanType %}
-        //.def_prop_rw("{{ f.name }}", get_bitpacked_array()) // fixed-length boolean array
+        .def_prop_ro("{{ f.name }}",
+                     []({{ t | full_reference_name }} &self) -> std::array<bool, {{ f.data_type.capacity }}>
+                     { return get_fixed_bitpacked_array<{{ f.data_type.capacity }}>(self.{{ f.name | id }}_bitpacked_);}
+        ) // fixed-length boolean array
         {%- else %}
         .def_prop_ro("{{ f.name }}",
                      []({{ t | full_reference_name }} &self) -> std::array<{{ _type_from_field(f.data_type.element_type) }}, {{ f.data_type.capacity }}>
