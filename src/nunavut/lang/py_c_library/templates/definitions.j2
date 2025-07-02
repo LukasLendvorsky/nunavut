@@ -46,6 +46,44 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
 {
     nanobind::class_<{{ t | full_reference_name }}>(m, "{{ t | short_reference_name }}")
         .def(nanobind::init<>())
+
+{%- if t.inner_type is UnionType %}
+{%- for f in t.fields_except_padding -%}
+    {%- if f.data_type is PrimitiveType %}
+        primitive type
+    {%- elif f.data_type is CompositeType %}
+        // overloaded constructor for union with composite type element
+        .def("__init__",
+             []({{ t | full_reference_name }}* self,
+             {{ f.data_type | full_reference_name }} &{{ f.name | id }}) {
+                {{ t | full_reference_name }}_select_{{ f.name }}_(self);
+                self->{{ f.name | id }} = {{ f.name | id }};
+             },
+             nanobind::arg("{{ f.name }}")
+             )
+    {%- elif f.data_type is FixedLengthArrayType %}
+        // overloaded constructor for union with FixedLengthArrayType
+        .def("__init__",
+              []({{ t | full_reference_name }}* self,
+                const std::array<{{_type_from_field(f.data_type.element_type)}}, {{f.data_type.capacity}}> &{{ f.name | id }}) {
+                    {{ t | full_reference_name }}_select_{{ f.name }}_(self);
+                    {%- if f.data_type.element_type is BooleanType %}
+                    set_fixed_bitpacked_array(self->{{ f.name | id }}_bitpacked_, {{ f.name | id }});
+                    {%- else %}
+                    set_fixed_array(self->{{ f.name | id }}, {{ f.name | id }});
+                    {%- endif %}
+
+                },
+                nanobind::arg("{{ f.name }}")
+            )
+    {%- elif f.data_type is VariableLengthArrayType %}
+        // variable-length array
+    {%- else %}
+        {%- assert False %}{# Not a valid field type. #}
+    {%- endif -%}
+
+{%- endfor -%}
+{%- elif t.inner_type is StructureType %}
         .def("__init__",
              []({{ t | full_reference_name }}* self{%- if t.fields_except_padding | length -%},{%- endif -%}
 {%- for f in t.fields_except_padding -%}
@@ -87,6 +125,7 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
              nanobind::arg("{{ f.name }}"){%- if not loop.last %},{%- endif -%}
 {%- endfor %}
          )
+{%- endif -%}
 {%- for f in t.fields_except_padding -%}
     {%- if f.data_type is PrimitiveType %}
         .def_rw("{{ f.name }}", &{{ t | full_reference_name }}::{{ f.name | id }}) // primitive type
