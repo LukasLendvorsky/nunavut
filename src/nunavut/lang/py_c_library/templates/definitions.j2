@@ -128,24 +128,21 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
 {%- endif -%}
 {%- for f in t.fields_except_padding -%}
     {%- if f.data_type is PrimitiveType %}
-        .def_rw("{{ f.name }}", &{{ t | full_reference_name }}::{{ f.name | id }}) // primitive type
+        .def_ro("{{ f.name }}", &{{ t | full_reference_name }}::{{ f.name | id }}) // primitive type
     {%- elif f.data_type is CompositeType %}
-        .def_rw("{{ f.name }}", &{{ t | full_reference_name }}::{{ f.name | id }}) // composite type
+        .def_ro("{{ f.name }}", &{{ t | full_reference_name }}::{{ f.name | id }}) // composite type
     {%- elif f.data_type is FixedLengthArrayType -%}
         {%- if f.data_type.element_type is BooleanType %}
         //.def_prop_rw("{{ f.name }}", get_bitpacked_array()) // fixed-length boolean array
         {%- else %}
-        .def_prop_rw("{{ f.name }}",
+        .def_prop_ro("{{ f.name }}",
                      []({{ t | full_reference_name }} &self) -> std::array<{{ _type_from_field(f.data_type.element_type) }}, {{ f.data_type.capacity }}>
-                     { return get_fixed_array<{{ _type_from_field(f.data_type.element_type) }}, {{ f.data_type.capacity }}>(self.{{ f.name | id }}); },
-                     []({{ t | full_reference_name }} &self, const std::array<{{ _type_from_field(f.data_type.element_type) }}, {{ f.data_type.capacity }}> &value)
-                     { set_fixed_array(self.{{ f.name | id }}, value); }
-
+                     { return get_fixed_array<{{ _type_from_field(f.data_type.element_type) }}, {{ f.data_type.capacity }}>(self.{{ f.name | id }}); }
         ) // fixed-length array
         {%- endif -%}
     {%- elif f.data_type is VariableLengthArrayType -%}
         {%- if f.data_type.element_type is BooleanType %}
-        //.def_rw("{{ f.name }}", &{{ t | full_reference_name }}::bitpacked) // variable-length boolean array
+        //.def_ro("{{ f.name }}", &{{ t | full_reference_name }}::bitpacked) // variable-length boolean array
         {%- else %}
         //todo: variable array
         {%- endif -%}
