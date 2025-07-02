@@ -50,13 +50,13 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
              []({{ t | full_reference_name }}* self{%- if t.fields_except_padding | length -%},{%- endif -%}
 {%- for f in t.fields_except_padding -%}
     {%- if f.data_type is PrimitiveType %}
-                {{ f.data_type | type_from_primitive }} {{ f.name | id }}{%- if not loop.last %},{%- endif %} // PrimitiveType
+                const {{ f.data_type | type_from_primitive }} {{ f.name | id }}{%- if not loop.last %},{%- endif %} // PrimitiveType
     {%- elif f.data_type is CompositeType %}
-                {{ f.data_type | full_reference_name }} {{ f.name | id }}{%- if not loop.last %},{%- endif %} // CompositeType
+                const {{ f.data_type | full_reference_name }} &{{ f.name | id }}{%- if not loop.last %},{%- endif %} // CompositeType
     {%- elif f.data_type is FixedLengthArrayType %}
-                int {{ f.name | id }}{%- if not loop.last %},{%- endif %} // FixedLengthArrayType
+                const std::array<{{_type_from_field(f.data_type.element_type)}}, {{f.data_type.capacity}}> & {{ f.name | id }}{%- if not loop.last %},{%- endif %} // FixedLengthArrayType
     {%- elif f is VariableLengthArrayType %}
-                int {{ f.name | id }}{%- if not loop.last %},{%- endif %} // VariableLengthArrayType
+                const std::vector<{{_type_from_field(f.data_type.element_type)}}> & {{ f.name | id }}{%- if not loop.last %},{%- endif %} // VariableLengthArrayType
     {%- else -%}
         {%- assert False %}{# Not a valid field type. #}
     {%- endif -%}
@@ -69,7 +69,12 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
     {%- elif f.data_type is CompositeType %}
                 self->{{ f.name | id }} = {{ f.name | id }};
     {%- elif f.data_type is FixedLengthArrayType %}
-                // todo: fixed-length array
+            {%- if f.data_type.element_type is BooleanType %}
+                static_assert(sizeof(self->{{ f.name | id }}_bitpacked_)*8 >= {{ f.name | id }}.size(), "Fixed-length boolean array size mismatch");
+                set_fixed_bitpacked_array(self->{{ f.name | id }}_bitpacked_, {{ f.name | id }});
+            {%- else %}
+                set_fixed_array(self->{{ f.name | id }}, {{ f.name | id }});
+            {%- endif %}
     {%- elif f is VariableLengthArrayType %}
                 // todo: variable-length array
     {%- else -%}
@@ -79,7 +84,7 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
              }
              {%- if t.fields_except_padding | length -%},{%- endif -%}
 {%- for f in t.fields_except_padding %}
-             nanobind::arg("{{ f.name }}").none(){%- if not loop.last %},{%- endif -%}
+             nanobind::arg("{{ f.name }}"){%- if not loop.last %},{%- endif -%}
 {%- endfor %}
          )
 {%- for f in t.fields_except_padding -%}
@@ -89,9 +94,15 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
         .def_rw("{{ f.name }}", &{{ t | full_reference_name }}::{{ f.name | id }}) // composite type
     {%- elif f.data_type is FixedLengthArrayType -%}
         {%- if f.data_type.element_type is BooleanType %}
-        //.def_rw("{{ f.name }}", &{{ t | full_reference_name }}::{{ f.name | id }}_bitpacked_) // fixed-length boolean array
+        //.def_prop_rw("{{ f.name }}", get_bitpacked_array()) // fixed-length boolean array
         {%- else %}
-        //.def_rw("{{ f.name }}", &{{ t | full_reference_name }}::{{ f.name | id }}) // fixed-length array
+        .def_prop_rw("{{ f.name }}",
+                     []({{ t | full_reference_name }} &self) -> std::array<{{ _type_from_field(f.data_type.element_type) }}, {{ f.data_type.capacity }}>
+                     { return get_fixed_array<{{ _type_from_field(f.data_type.element_type) }}, {{ f.data_type.capacity }}>(self.{{ f.name | id }}); },
+                     []({{ t | full_reference_name }} &self, const std::array<{{ _type_from_field(f.data_type.element_type) }}, {{ f.data_type.capacity }}> &value)
+                     { set_fixed_array(self.{{ f.name | id }}, value); }
+
+        ) // fixed-length array
         {%- endif -%}
     {%- elif f.data_type is VariableLengthArrayType -%}
         {%- if f.data_type.element_type is BooleanType %}
@@ -206,6 +217,17 @@ typedef struct
 /// The number of fields in the union. Valid tag values range from zero to this value minus one, inclusive.
 #define {{ t | full_reference_name }}_UNION_OPTION_COUNT_ {{ t.fields | length }}U
 {% endmacro %}
+
+{# ----------------------------------------------------------------------------------------------------------------- #}
+{%- macro _type_from_field(f) -%}
+{%- if f is PrimitiveType -%}
+{{ f | type_from_primitive }}
+{%- elif f is CompositeType -%}
+{{ f | full_reference_name }}
+{%- else -%}
+{% assert False %}{# arrays not supported. #}
+{%- endif -%}
+{%- endmacro -%}
 
 
 {# ----------------------------------------------------------------------------------------------------------------- #}

@@ -3,6 +3,9 @@
 
 #include <nanobind/nanobind.h>
 #include <serialization.h>
+#include <nanobind/stl/vector.h>
+#include <array>
+#include <nanobind/stl/array.h>
 
 template <typename T, size_t buffer_size, auto serialize_func>
 nanobind::bytes python_serialize(const T &instance) {
@@ -27,6 +30,33 @@ T python_deserialize(const nanobind::bytes &data) {
     }
 
     return status;
+}
+
+template<typename T, size_t N>
+void set_fixed_array(T *to, const std::array<T, N> &from) {
+    for (size_t i = 0; i < N; ++i) {
+        to[i] = from[i];
+    }
+}
+
+template<typename T, size_t N>
+std::array<T,N> get_fixed_array(const T* from) {
+    std::array<T,N> out;
+    for (size_t i = 0; i < N; ++i) {
+        out[i] = from[i];
+    }
+    return out;
+}
+
+template<size_t N>
+void set_fixed_bitpacked_array(uint8_t *to, const std::array<bool,N> &from) {
+    for (size_t i = 0; i < N; ++i) {
+        if (from[i]) {
+            to[i / 8] |= (1 << (i % 8));
+        } else {
+            to[i / 8] &= ~(1 << (i % 8));
+        }
+    }
 }
 
 #endif //NUNAVUT_SUPPORT_PYTHON_BINDING_H_INCLUDED
