@@ -6,6 +6,7 @@
 #include <nanobind/stl/vector.h>
 #include <array>
 #include <nanobind/stl/array.h>
+#include <nanobind/stl/optional.h>
 
 template <typename T, size_t buffer_size, auto serialize_func>
 nanobind::bytes python_serialize(const T &instance) {
@@ -66,6 +67,53 @@ std::array<bool,N> get_fixed_bitpacked_array(const uint8_t *from) {
         out[i] = (from[i / 8] & (1 << (i % 8))) != 0;
     }
     return out;
+}
+
+template<typename T, typename STRUCT>
+void set_variable_array(STRUCT &to, const std::vector<T> &from) {
+    static_assert(std::is_same_v<std::remove_extent_t<decltype(STRUCT::elements)>, T>);
+    if (sizeof(to.elements) / sizeof(T) < from.size()){
+        throw std::invalid_argument("Too many elements to store in variable-length array");
+    }
+    to.count = from.size();
+    for (size_t i = 0; i < from.size(); ++i) {
+        to.elements[i] = from[i];
+    }
+}
+
+template<typename STRUCT>
+std::vector<std::remove_extent_t<decltype(STRUCT::elements)>> get_variable_array(STRUCT &from) {
+    using T = std::remove_extent_t<decltype(STRUCT::elements)>;
+    std::vector<T> to(from.count);
+    for (size_t i = 0; i < from.count; ++i) {
+        to[i] = from.elements[i];
+    }
+    return to;
+}
+
+template<typename STRUCT>
+void set_variable_bitpacked_array(STRUCT &to, const std::vector<bool> &from) {
+    static_assert(std::is_same_v<std::remove_extent_t<decltype(STRUCT::bitpacked)>, uint8_t>);
+    if (sizeof(to.bitpacked) * 8 < from.size()){
+        throw std::invalid_argument("Too many elements to store in variable-length boolean array");
+    }
+    to.count = from.size();
+    for (size_t i = 0; i < from.size(); ++i) {
+        if (from[i]) {
+            to.bitpacked[i / 8] |= (1 << (i % 8));
+        } else {
+            to.bitpacked[i / 8] &= ~(1 << (i % 8));
+        }
+    }
+}
+
+template<typename STRUCT>
+std::vector<bool> get_variable_bitpacked_array(STRUCT &from) {
+    std::vector<bool> to(from.count);
+    for (size_t i = 0; i < from.count; ++i) {
+        to[i] = from.bitpacked[i / 8] & (1 << (i % 8)) ? true : false;
+    }
+    return to;
 }
 
 #endif //NUNAVUT_SUPPORT_PYTHON_BINDING_H_INCLUDED
