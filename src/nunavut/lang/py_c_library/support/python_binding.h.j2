@@ -116,4 +116,18 @@ std::vector<bool> get_variable_bitpacked_array(STRUCT &from) {
     return to;
 }
 
+template<typename STRUCT>
+void set_variable_stringlike_array(STRUCT &to, const nanobind::bytes &from) {
+    if (from.size() > sizeof(to.elements)) {
+        throw std::invalid_argument("Bytes array too long to store in variable-length array");
+    }
+    to.count = from.size();
+    memcpy(to.elements, from.data(), from.size());
+}
+
+template<typename STRUCT>
+nanobind::bytes get_variable_stringlike_array(STRUCT &from) {
+    return nanobind::bytes(reinterpret_cast<const char *>(from.elements), from.count);
+}
+
 #endif //NUNAVUT_SUPPORT_PYTHON_BINDING_H_INCLUDED

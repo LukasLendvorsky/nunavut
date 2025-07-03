@@ -88,8 +88,12 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
                 std::optional<{{ f.data_type | full_reference_name }}> {{ f.name | id }}{%- if not loop.last %},{%- endif %} // CompositeType
         {%- elif f.data_type is FixedLengthArrayType %}
                 std::optional<std::array<{{_type_from_field(f.data_type.element_type)}}, {{f.data_type.capacity}}>> {{ f.name | id }}{%- if not loop.last %},{%- endif %} // FixedLengthArrayType
-        {%- elif f is VariableLengthArrayType %}
+        {%- elif f is VariableLengthArrayType -%}
+            {%- if f.data_type.string_like %}
+                std::optional<nanobind::bytes> {{ f.name | id }}{%- if not loop.last %},{%- endif %} // VariableLength String-Like Type
+            {%- else %}
                 std::optional<std::vector<{{_type_from_field(f.data_type.element_type)}}>> {{ f.name | id }}{%- if not loop.last %},{%- endif %} // VariableLengthArrayType
+            {%- endif -%}
         {%- else -%}
             {%- assert False %}{# Not a valid field type. #}
         {%- endif -%}
@@ -115,10 +119,14 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
                     set_fixed_array(self->{{ f.name | id }}, *{{ f.name | id }});
                 }
             {%- endif -%}
-        {%- elif f is VariableLengthArrayType -%}
+        {%- elif f is VariableLengthArrayType %}
             {%- if f.data_type.element_type is BooleanType %}
                 if ({{ f.name | id }}.has_value()){
                     set_variable_bitpacked_array(self->{{ f.name | id }}, *{{ f.name | id }});
+                }
+            {%- elif f.data_type.string_like %}
+                if ({{ f.name | id }}.has_value()){
+                    set_variable_stringlike_array(self->{{ f.name | id }}, *{{ f.name | id }});
                 }
             {%- else %}
                 if ({{ f.name | id }}.has_value()){
@@ -162,6 +170,11 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
                      []({{ t | full_reference_name }} &self) -> std::vector<bool>
                      { return get_variable_bitpacked_array(self.{{ f.name | id }});}
         ) // variable-length boolean array
+        {%- elif f.data_type.string_like %}
+        .def_prop_ro("{{ f.name }}",
+                     []({{ t | full_reference_name }} &self) -> nanobind::bytes
+                     { return get_variable_stringlike_array(self.{{ f.name | id }});}
+        ) // variable-length stringlike array
         {%- else %}
         .def_prop_ro("{{ f.name }}",
                      []({{ t | full_reference_name }} &self) -> std::vector<{{ _type_from_field(f.data_type.element_type) }}>
