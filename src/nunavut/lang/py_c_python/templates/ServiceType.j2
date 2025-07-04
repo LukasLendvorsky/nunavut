@@ -13,8 +13,8 @@ class {{ T|short_reference_name }}:
     Response : TypeAlias = python_dsdls.{{ T| full_reference_name }}.{{ T.response_type | short_reference_name }}
 
     {% if T.has_fixed_port_id %}
-    _FIXED_PORT_ID_ : int = {{ T.fixed_port_id|int }}
+    __FIXED_PORT_ID__ : int = {{ T.fixed_port_id|int }}
     {% endif %}
-    _DSDL_NAME_ : str = "{{T.full_name}}.{{T.version.major}}.{{T.version.minor}}"
+    __DSDL_NAME__ : str = "{{T.full_name}}.{{T.version.major}}.{{T.version.minor}}"
 
 {%- endblock -%}
