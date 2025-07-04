@@ -289,16 +289,16 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
 {%- elif t.inner_type is StructureType -%}
     {{- _define_export_struct(t) -}}
 {%- endif %}
-        .def("_serialize_", &python_serialize<{{ t | full_reference_name }}, {{ t | full_reference_name }}_SERIALIZATION_BUFFER_SIZE_BYTES_, {{ t | full_reference_name }}_serialize_>)
-        .def_static("_deserialize_", &python_deserialize<{{ t | full_reference_name }}, {{ t | full_reference_name }}_deserialize_>)
+        .def("__serialize__", &python_serialize<{{ t | full_reference_name }}, {{ t | full_reference_name }}_SERIALIZATION_BUFFER_SIZE_BYTES_, {{ t | full_reference_name }}_serialize_>)
+        .def_static("__deserialize__", &python_deserialize<{{ t | full_reference_name }}, {{ t | full_reference_name }}_deserialize_>)
         {%- for constant in t.constants %}
         .def_prop_ro_static("{{ constant.name }}", [](nanobind::handle){return {{ constant | constant_value }};})
         {%- endfor %}
-        .def_prop_ro_static("_EXTENT_BYTES_", [](nanobind::handle){return {{ t | full_reference_name }}_EXTENT_BYTES_;})
+        .def_prop_ro_static("__EXTENT_BYTES__", [](nanobind::handle){return {{ t | full_reference_name }}_EXTENT_BYTES_;})
         {% if t.has_fixed_port_id %}
-        .def_prop_ro_static("_FIXED_PORT_ID_", [](nanobind::handle){return {{ t | full_reference_name }}_FIXED_PORT_ID_;})
+        .def_prop_ro_static("__FIXED_PORT_ID__", [](nanobind::handle){return {{ t | full_reference_name }}_FIXED_PORT_ID_;})
         {% endif %}
-        .def_prop_ro_static("_DSDL_NAME_", [](nanobind::handle){return "{{t.full_name}}.{{t.version.major}}.{{t.version.minor}}";})
+        .def_prop_ro_static("__DSDL_NAME__", [](nanobind::handle){return "{{t.full_name}}.{{t.version.major}}.{{t.version.minor}}";})
         ;
 }
 {% endmacro %}
