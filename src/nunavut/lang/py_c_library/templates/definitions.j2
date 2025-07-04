@@ -40,45 +40,8 @@ static_assert({{ ref }}_EXTENT_BYTES_ >= {{ ref }}_SERIALIZATION_BUFFER_SIZE_BYT
 {% endmacro %}
 
 
-{% macro _define_export_function(t) %}
-
-void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
-{
-    nanobind::class_<{{ t | full_reference_name }}>(m, "{{ t | short_reference_name }}")
-{%- if t.inner_type is UnionType %}
-    {%- for f in t.fields_except_padding -%}
-        {%- if f.data_type is CompositeType %}
-        // overloaded constructor for union with composite type element
-        .def("__init__",
-             []({{ t | full_reference_name }}* self,
-             {{ f.data_type | full_reference_name }} &{{ f.name | id }}) {
-                {{ t | full_reference_name }}_select_{{ f.name }}_(self);
-                self->{{ f.name | id }} = {{ f.name | id }};
-             },
-             nanobind::arg("{{ f.name }}")
-             )
-        {%- elif f.data_type is FixedLengthArrayType %}
-        // overloaded constructor for union with FixedLengthArrayType
-        .def("__init__",
-              []({{ t | full_reference_name }}* self,
-                const std::array<{{_type_from_field(f.data_type.element_type)}}, {{f.data_type.capacity}}> &{{ f.name | id }}) {
-                    {{ t | full_reference_name }}_select_{{ f.name }}_(self);
-                    {%- if f.data_type.element_type is BooleanType %}
-                    set_fixed_bitpacked_array(self->{{ f.name | id }}_bitpacked_, {{ f.name | id }});
-                    {%- else %}
-                    set_fixed_array(self->{{ f.name | id }}, {{ f.name | id }});
-                    {%- endif %}
-
-                },
-                nanobind::arg("{{ f.name }}")
-            )
-        {%- elif f.data_type is VariableLengthArrayType %}
-        // variable-length array
-        {%- else %}
-        {%- assert False %}{# Not a valid field type. #}
-        {%- endif -%}
-    {%- endfor -%}
-{%- elif t.inner_type is StructureType %}
+{% macro _define_export_struct(t) %}
+        // constructor for structure type
         .def("__init__",
              []({{ t | full_reference_name }}* self{%- if t.fields_except_padding | length -%},{%- endif -%}
     {%- for f in t.fields_except_padding -%}
@@ -90,7 +53,7 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
                 std::optional<std::array<{{_type_from_field(f.data_type.element_type)}}, {{f.data_type.capacity}}>> {{ f.name | id }}{%- if not loop.last %},{%- endif %} // FixedLengthArrayType
         {%- elif f is VariableLengthArrayType -%}
             {%- if f.data_type.string_like %}
-                std::optional<nanobind::bytes> {{ f.name | id }}{%- if not loop.last %},{%- endif %} // VariableLength String-Like Type
+                std::variant<nanobind::bytes, nanobind::str, nanobind::typed<nanobind::list, int> , std::nullptr_t> {{ f.name | id }}{%- if not loop.last %},{%- endif %} // VariableLength String-Like Type
             {%- else %}
                 std::optional<std::vector<{{_type_from_field(f.data_type.element_type)}}>> {{ f.name | id }}{%- if not loop.last %},{%- endif %} // VariableLengthArrayType
             {%- endif -%}
@@ -125,9 +88,8 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
                     set_variable_bitpacked_array(self->{{ f.name | id }}, *{{ f.name | id }});
                 }
             {%- elif f.data_type.string_like %}
-                if ({{ f.name | id }}.has_value()){
-                    set_variable_stringlike_array(self->{{ f.name | id }}, *{{ f.name | id }});
-                }
+                set_variable_stringlike_array(self->{{ f.name | id }}, {{ f.name | id }});
+
             {%- else %}
                 if ({{ f.name | id }}.has_value()){
                     set_variable_array(self->{{ f.name | id }}, *{{ f.name | id }});
@@ -146,45 +108,113 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
         {%- endfor %}
     {%- endif -%}
          )
-{%- endif -%}
-{%- for f in t.fields_except_padding -%}
-    {%- if f.data_type is PrimitiveType %}
+    // getters for all fields
+    {%- for f in t.fields_except_padding -%}
+    {
+        {%- if f.data_type is PrimitiveType %}
         .def_ro("{{ f.name }}", &{{ t | full_reference_name }}::{{ f.name | id }}) // primitive type
-    {%- elif f.data_type is CompositeType %}
+        {%- elif f.data_type is CompositeType %}
         .def_ro("{{ f.name }}", &{{ t | full_reference_name }}::{{ f.name | id }}) // composite type
-    {%- elif f.data_type is FixedLengthArrayType -%}
-        {%- if f.data_type.element_type is BooleanType %}
+        {%- elif f.data_type is FixedLengthArrayType -%}
+            {%- if f.data_type.element_type is BooleanType %}
         .def_prop_ro("{{ f.name }}",
                      []({{ t | full_reference_name }} &self) -> std::array<bool, {{ f.data_type.capacity }}>
                      { return get_fixed_bitpacked_array<{{ f.data_type.capacity }}>(self.{{ f.name | id }}_bitpacked_);}
         ) // fixed-length boolean array
-        {%- else %}
+            {%- else %}
         .def_prop_ro("{{ f.name }}",
                      []({{ t | full_reference_name }} &self) -> std::array<{{ _type_from_field(f.data_type.element_type) }}, {{ f.data_type.capacity }}>
                      { return get_fixed_array<{{ _type_from_field(f.data_type.element_type) }}, {{ f.data_type.capacity }}>(self.{{ f.name | id }}); }
         ) // fixed-length array
-        {%- endif -%}
-    {%- elif f.data_type is VariableLengthArrayType -%}
-        {%- if f.data_type.element_type is BooleanType %}
+            {%- endif -%}
+        {%- elif f.data_type is VariableLengthArrayType -%}
+            {%- if f.data_type.element_type is BooleanType %}
         .def_prop_ro("{{ f.name }}",
                      []({{ t | full_reference_name }} &self) -> std::vector<bool>
                      { return get_variable_bitpacked_array(self.{{ f.name | id }});}
         ) // variable-length boolean array
-        {%- elif f.data_type.string_like %}
+            {%- elif f.data_type.string_like %}
         .def_prop_ro("{{ f.name }}",
                      []({{ t | full_reference_name }} &self) -> nanobind::bytes
                      { return get_variable_stringlike_array(self.{{ f.name | id }});}
         ) // variable-length stringlike array
-        {%- else %}
+            {%- else %}
         .def_prop_ro("{{ f.name }}",
                      []({{ t | full_reference_name }} &self) -> std::vector<{{ _type_from_field(f.data_type.element_type) }}>
                      { return get_variable_array(self.{{ f.name | id }}); }
         ) // variable-length array
+            {%- endif -%}
+        {%- else -%}
+            {% assert false %}}
+        {%- endif %}
+    {%- endfor %}
+{% endmacro %}
+
+{% macro _define_export_union(t) %}
+    {%- for f in t.fields_except_padding -%}
+        {%- if f.data_type is CompositeType %}
+        // overloaded constructor for union with composite type element
+        .def("__init__",
+             []({{ t | full_reference_name }}* self,
+             {{ f.data_type | full_reference_name }} &{{ f.name | id }}) {
+                {{ t | full_reference_name }}_select_{{ f.name }}_(self);
+                self->{{ f.name | id }} = {{ f.name | id }};
+             },
+             nanobind::arg("{{ f.name }}")
+             )
+        {%- elif f.data_type is FixedLengthArrayType %}
+        // overloaded constructor for union with FixedLengthArrayType
+        .def("__init__",
+              []({{ t | full_reference_name }}* self,
+                const std::array<{{_type_from_field(f.data_type.element_type)}}, {{f.data_type.capacity}}> &{{ f.name | id }}) {
+                    {{ t | full_reference_name }}_select_{{ f.name }}_(self);
+                    {%- if f.data_type.element_type is BooleanType %}
+                    set_fixed_bitpacked_array(self->{{ f.name | id }}_bitpacked_, {{ f.name | id }});
+                    {%- else %}
+                    set_fixed_array(self->{{ f.name | id }}, {{ f.name | id }});
+                    {%- endif %}
+                },
+                nanobind::arg("{{ f.name }}"))
+        {%- elif f.data_type is VariableLengthArrayType %}
+            {%- if f.data_type.string_like %}
+        .def("__init__", // string-like variable-length array
+              []({{ t | full_reference_name }}* self,
+                std::variant<nanobind::bytes, nanobind::str, nanobind::typed<nanobind::list, int> , std::nullptr_t> {{ f.name | id }}) {
+                    {{ t | full_reference_name }}_select_{{ f.name }}_(self);
+                    set_variable_stringlike_array(self->{{ f.name | id }}, {{ f.name | id }});
+                },
+                nanobind::arg("{{ f.name }}"))
+            {% else %}
+        .def("__init__", // variable-length array
+              []({{ t | full_reference_name }}* self,
+                std::optional<std::vector<{{_type_from_field(f.data_type.element_type)}}>> {{ f.name | id }}){
+                    {{ t | full_reference_name }}_select_{{ f.name }}_(self);
+                {%- if f.data_type.element_type is BooleanType %}
+                    set_variable_bitpacked_array(self->{{ f.name | id }}, *{{ f.name | id }});
+                {%- else %}
+                    set_variable_array(self->{{ f.name | id }}, *{{ f.name | id }});
+
+                {%- endif %}
+                },
+                nanobind::arg("{{ f.name }}"))
+            {% endif %}
+        {%- else %}
+            {%- assert False %}{# Not a valid field type. #}
         {%- endif -%}
-    {%- else -%}
-        // todo: unsupported field type {{ f.data_type }}
-    {%- endif %}
-{%- endfor %}
+    {%- endfor -%}
+{% endmacro %}
+
+
+{% macro _define_export_function(t) %}
+
+void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
+{
+    nanobind::class_<{{ t | full_reference_name }}>(m, "{{ t | short_reference_name }}")
+{%- if t.inner_type is UnionType %}
+    {{ _define_export_union(t) }}
+{%- elif t.inner_type is StructureType %}
+    {{ _define_export_struct(t) }}
+{%- endif -%}
         .def("__serialize__", &python_serialize<{{ t | full_reference_name }}, {{ t | full_reference_name }}_SERIALIZATION_BUFFER_SIZE_BYTES_, {{ t | full_reference_name }}_serialize_>)
         .def_static("__deserialize__", &python_deserialize<{{ t | full_reference_name }}, {{ t | full_reference_name }}_deserialize_>)
         {%- for constant in t.constants %}
