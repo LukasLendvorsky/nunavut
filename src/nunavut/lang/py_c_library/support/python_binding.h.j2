@@ -178,4 +178,17 @@ nanobind::bytes get_variable_stringlike_array(STRUCT &from) {
     return nanobind::bytes(reinterpret_cast<const char *>(from.elements), from.count);
 }
 
+void set_fixed_bytes_array(uint8_t *to, size_t size, nanobind::bytes &from){
+    if (from.size() != size) {
+        throw std::invalid_argument("Bytes array size doesn't match the expected size for fixed-length array");
+    }
+
+    memcpy(to, from.data(), size);
+}
+
+nanobind::bytes get_fixed_bytes_array(uint8_t *from, size_t size) {
+    return nanobind::bytes(reinterpret_cast<const char *>(from), size);
+}
+
+
 #endif //NUNAVUT_SUPPORT_PYTHON_BINDING_H_INCLUDED

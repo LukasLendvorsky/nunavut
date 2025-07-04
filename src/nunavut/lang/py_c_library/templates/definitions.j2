@@ -50,7 +50,13 @@ static_assert({{ ref }}_EXTENT_BYTES_ >= {{ ref }}_SERIALIZATION_BUFFER_SIZE_BYT
         {%- elif f.data_type is CompositeType %}
                 std::optional<{{ f.data_type | full_reference_name }}> {{ f.name | id }}{%- if not loop.last %},{%- endif %} // CompositeType
         {%- elif f.data_type is FixedLengthArrayType %}
+            {%- if f.data_type.element_type is BooleanType%}
+                std::optional<std::array<bool, {{f.data_type.capacity}}>> {{ f.name | id }}{%- if not loop.last %},{%- endif %} // FixedLengthArrayType
+            {%- elif f.data_type.element_type is PrimitiveType and f.data_type.element_type.bit_length == 8 %}
+                std::optional<nanobind::bytes> {{ f.name | id }}{%- if not loop.last %},{%- endif %} // FixedLength Bytes Array
+            {%- else %}
                 std::optional<std::array<{{_type_from_field(f.data_type.element_type)}}, {{f.data_type.capacity}}>> {{ f.name | id }}{%- if not loop.last %},{%- endif %} // FixedLengthArrayType
+            {%- endif -%}
         {%- elif f is VariableLengthArrayType -%}
             {%- if f.data_type.string_like %}
                 std::variant<nanobind::bytes, nanobind::str, nanobind::typed<nanobind::list, int> , std::nullptr_t> {{ f.name | id }}{%- if not loop.last %},{%- endif %} // VariableLength String-Like Type
@@ -76,6 +82,10 @@ static_assert({{ ref }}_EXTENT_BYTES_ >= {{ ref }}_SERIALIZATION_BUFFER_SIZE_BYT
             {%- if f.data_type.element_type is BooleanType %}
                 if ({{ f.name | id }}.has_value()){
                     set_fixed_bitpacked_array(self->{{ f.name | id }}_bitpacked_, *{{ f.name | id }});
+                }
+            {%- elif f.data_type.element_type is PrimitiveType and f.data_type.element_type.bit_length == 8 %}
+                if ({{ f.name | id }}.has_value()){
+                    set_fixed_bytes_array(self->{{ f.name | id }}, {{ f.data_type.capacity }}, *{{ f.name | id }});
                 }
             {%- else %}
                 if ({{ f.name | id }}.has_value()){
@@ -122,6 +132,13 @@ static_assert({{ ref }}_EXTENT_BYTES_ >= {{ ref }}_SERIALIZATION_BUFFER_SIZE_BYT
                      { return get_fixed_bitpacked_array<{{ f.data_type.capacity }}>(self.{{ f.name | id }}_bitpacked_);},
                      nanobind::sig("def {{ f.name }}(self,/) -> collections.abc.Sequence[bool]")
         )
+        .def_prop_ro_static("{{ f.name }}_CAPACITY_", [](nanobind::handle){ return {{ f.data_type.capacity }}; })
+            {%- elif f.data_type.element_type is PrimitiveType and f.data_type.element_type.bit_length == 8 %}
+        .def_prop_ro("{{ f.name }}",
+                     []({{ t | full_reference_name }} &self) -> nanobind::bytes
+                     {
+                        return get_fixed_bytes_array(self.{{ f.name | id }}, sizeof(self.{{ f.name | id }}));
+                    })// fixed-length bytes array
         .def_prop_ro_static("{{ f.name }}_CAPACITY_", [](nanobind::handle){ return {{ f.data_type.capacity }}; })
             {%- else %}
         .def_prop_ro("{{ f.name }}", // fixed-length array
@@ -170,6 +187,14 @@ static_assert({{ ref }}_EXTENT_BYTES_ >= {{ ref }}_SERIALIZATION_BUFFER_SIZE_BYT
                 nanobind::arg("{{ f.name }}"))
         {%- elif f.data_type is FixedLengthArrayType %}
         .def("__init__", // overloaded constructor for union with FixedLengthArrayType
+            {%- if f.data_type.element_type.bit_length == 8 %}
+             []({{ t | full_reference_name }}* self,
+                const nanobind::bytes &{{ f.name | id }}) {
+                    {{ t | full_reference_name }}_select_{{ f.name }}_(self);
+                    set_fixed_bytes_array(self->{{ f.name | id }}, {{ f.data_type.capacity }}, *{{ f.name | id }});
+                },
+                nanobind::arg("{{ f.name }}"))
+            {%- else %}
               []({{ t | full_reference_name }}* self,
                 const std::array<{{_type_from_field(f.data_type.element_type)}}, {{f.data_type.capacity}}> &{{ f.name | id }}) {
                     {{ t | full_reference_name }}_select_{{ f.name }}_(self);
@@ -180,6 +205,7 @@ static_assert({{ ref }}_EXTENT_BYTES_ >= {{ ref }}_SERIALIZATION_BUFFER_SIZE_BYT
                     {%- endif %}
                 },
                 nanobind::arg("{{ f.name }}"))
+            {%- endif -%}
         {%- elif f.data_type is VariableLengthArrayType %}
             {%- if f.data_type.string_like %}
         .def("__init__", // string-like variable-length array
@@ -234,6 +260,16 @@ static_assert({{ ref }}_EXTENT_BYTES_ >= {{ ref }}_SERIALIZATION_BUFFER_SIZE_BYT
                         }
                         return std::nullopt;
                     })// fixed-length boolean array
+        .def_prop_ro_static("{{ f.name }}_CAPACITY_", [](nanobind::handle){ return {{ f.data_type.capacity }}; })
+            {%- elif f.data_type.element_type is PrimitiveType and f.data_type.element_type.bit_length == 8 %}
+        .def_prop_ro("{{ f.name }}",
+                     []({{ t | full_reference_name }} &self) -> std::optional<nanobind::bytes>
+                     {
+                        if ({{ t | full_reference_name }}_is_{{ f.name }}_(&self)){
+                            return get_fixed_bytes_array(self.{{ f.name | id }}, sizeof(self.{{ f.name | id }}));
+                        }
+                        return std::nullopt;
+                    })// fixed-length bytes array
         .def_prop_ro_static("{{ f.name }}_CAPACITY_", [](nanobind::handle){ return {{ f.data_type.capacity }}; })
             {%- else %}
         .def_prop_ro("{{ f.name }}",
