@@ -289,8 +289,8 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
 {%- elif t.inner_type is StructureType -%}
     {{- _define_export_struct(t) -}}
 {%- endif %}
-        .def("__serialize__", &python_serialize<{{ t | full_reference_name }}, {{ t | full_reference_name }}_SERIALIZATION_BUFFER_SIZE_BYTES_, {{ t | full_reference_name }}_serialize_>)
-        .def_static("__deserialize__", &python_deserialize<{{ t | full_reference_name }}, {{ t | full_reference_name }}_deserialize_>)
+        .def("_serialize_", &python_serialize<{{ t | full_reference_name }}, {{ t | full_reference_name }}_SERIALIZATION_BUFFER_SIZE_BYTES_, {{ t | full_reference_name }}_serialize_>)
+        .def_static("_deserialize_", &python_deserialize<{{ t | full_reference_name }}, {{ t | full_reference_name }}_deserialize_>)
         {%- for constant in t.constants %}
         .def_prop_ro_static("{{ constant.name }}", [](nanobind::handle){return {{ constant | constant_value }};})
         {%- endfor %}
