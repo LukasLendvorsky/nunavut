@@ -118,7 +118,8 @@ static_assert({{ ref }}_EXTENT_BYTES_ >= {{ ref }}_SERIALIZATION_BUFFER_SIZE_BYT
             {%- if f.data_type.element_type is BooleanType %}
         .def_prop_ro("{{ f.name }}", // fixed-length boolean array
                      []({{ t | full_reference_name }} &self) -> std::array<bool, {{ f.data_type.capacity }}>
-                     { return get_fixed_bitpacked_array<{{ f.data_type.capacity }}>(self.{{ f.name | id }}_bitpacked_);}
+                     { return get_fixed_bitpacked_array<{{ f.data_type.capacity }}>(self.{{ f.name | id }}_bitpacked_);},
+                     nanobind::sig("def {{ f.name }}(self,/) -> collections.abc.Sequence[bool]")
         )
             {%- else %}
         .def_prop_ro("{{ f.name }}", // fixed-length array
@@ -131,7 +132,8 @@ static_assert({{ ref }}_EXTENT_BYTES_ >= {{ ref }}_SERIALIZATION_BUFFER_SIZE_BYT
             {%- if f.data_type.element_type is BooleanType %}
         .def_prop_ro("{{ f.name }}", // variable-length boolean array
                      []({{ t | full_reference_name }} &self) -> std::vector<bool>
-                     { return get_variable_bitpacked_array(self.{{ f.name | id }});}
+                     { return get_variable_bitpacked_array(self.{{ f.name | id }});},
+                     nanobind::sig("def {{ f.name }}(self,/) -> collections.abc.Sequence[bool]")
         )
             {%- elif f.data_type.string_like %}
         .def_prop_ro("{{ f.name }}", // variable-length stringlike array
