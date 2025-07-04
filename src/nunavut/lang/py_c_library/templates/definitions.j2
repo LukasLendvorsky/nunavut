@@ -227,6 +227,7 @@ static_assert({{ ref }}_EXTENT_BYTES_ >= {{ ref }}_SERIALIZATION_BUFFER_SIZE_BYT
                         }
                         return std::nullopt;
                     })// fixed-length boolean array
+        .def_prop_ro_static("{{ f.name }}_CAPACITY_", [](nanobind::handle){ return {{ f.data_type.capacity }}; })
             {%- else %}
         .def_prop_ro("{{ f.name }}",
                      []({{ t | full_reference_name }} &self) -> std::optional<std::array<{{ _type_from_field(f.data_type.element_type) }}, {{ f.data_type.capacity }}>>
@@ -236,6 +237,7 @@ static_assert({{ ref }}_EXTENT_BYTES_ >= {{ ref }}_SERIALIZATION_BUFFER_SIZE_BYT
                         }
                         return std::nullopt;
                     }) // fixed-length array
+        .def_prop_ro_static("{{ f.name }}_CAPACITY_", [](nanobind::handle){ return {{ f.data_type.capacity }}; })
             {%- endif -%}
         {%- elif f.data_type is VariableLengthArrayType -%}
             {%- if f.data_type.element_type is BooleanType %}
@@ -247,6 +249,7 @@ static_assert({{ ref }}_EXTENT_BYTES_ >= {{ ref }}_SERIALIZATION_BUFFER_SIZE_BYT
                         }
                         return std::nullopt;
                      }) // variable-length boolean array
+        .def_prop_ro_static("{{ f.name }}_CAPACITY_", [](nanobind::handle){ return {{ f.data_type.capacity }}; })
             {%- elif f.data_type.string_like %}
         .def_prop_ro("{{ f.name }}",
                      []({{ t | full_reference_name }} &self) -> std::optional<nanobind::bytes>
@@ -256,6 +259,7 @@ static_assert({{ ref }}_EXTENT_BYTES_ >= {{ ref }}_SERIALIZATION_BUFFER_SIZE_BYT
                         }
                         return std::nullopt;
                      }) // variable-length stringlike array
+        .def_prop_ro_static("{{ f.name }}_CAPACITY_", [](nanobind::handle){ return {{ f.data_type.capacity }}; })
             {%- else %}
         .def_prop_ro("{{ f.name }}",
                      []({{ t | full_reference_name }} &self) -> std::optional<std::vector<{{ _type_from_field(f.data_type.element_type) }}>>
@@ -265,6 +269,7 @@ static_assert({{ ref }}_EXTENT_BYTES_ >= {{ ref }}_SERIALIZATION_BUFFER_SIZE_BYT
                         }
                         return std::nullopt;
                     }) // variable-length array
+        .def_prop_ro_static("{{ f.name }}_CAPACITY_", [](nanobind::handle){ return {{ f.data_type.capacity }};})
             {%- endif -%}
         {%- else -%}
             {% assert false %}}
@@ -293,6 +298,7 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
         {% if t.has_fixed_port_id %}
         .def_prop_ro_static("_FIXED_PORT_ID_", [](nanobind::handle){return {{ t | full_reference_name }}_FIXED_PORT_ID_;})
         {% endif %}
+        .def_prop_ro_static("_DSDL_NAME_", [](nanobind::handle){return "{{t.full_name}}.{{t.version.major}}.{{t.version.minor}}";})
         ;
 }
 {% endmacro %}
