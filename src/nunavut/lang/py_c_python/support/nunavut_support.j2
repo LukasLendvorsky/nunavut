@@ -28,7 +28,6 @@ __all__ = [
     "get_extent_bytes",
     "get_fixed_port_id",
     "get_attribute",
-    "set_attribute",
     "is_serializable",
     "is_message_type",
     "is_service_type",
@@ -129,26 +128,6 @@ def get_attribute(obj: Any, name: str) -> Any:
         return getattr(obj, name)
     except AttributeError:
         return getattr(obj, name + "_")
-
-
-def set_attribute(obj: Any, name: str, value: Any) -> None:
-    """
-    DSDL type attributes whose names can't be represented in Python (such as ``def`` or ``type``)
-    are suffixed with an underscore.
-    This function allows the caller to assign arbitrary attributes referring to them by their original DSDL names,
-    e.g., ``def`` instead of ``def_``.
-
-    If the attribute does not exist, raises :class:`AttributeError`.
-    """
-    suffixed = name + "_"
-    # We can't call setattr() without asking first because if it doesn't exist it will be created,
-    # which would be disastrous.
-    if hasattr(obj, name):
-        setattr(obj, name, value)
-    elif hasattr(obj, suffixed):
-        setattr(obj, suffixed, value)
-    else:
-        raise AttributeError(name)
 
 
 def is_serializable(dtype: Any) -> bool:
