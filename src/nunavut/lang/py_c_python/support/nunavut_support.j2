@@ -31,6 +31,7 @@ __all__ = [
     "is_serializable",
     "is_message_type",
     "is_service_type",
+    "MutableDSDLType",
 ]
 """
 No API stability guarantees are made for this module except for those entities that are listed in __all__.
@@ -157,3 +158,36 @@ def is_service_type(dtype: Any) -> bool:
     """
     return (is_serializable(getattr(dtype, "Request", None))
             and is_serializable(getattr(dtype, "Response", None)))
+
+
+class MutableDSDLType[T]:
+    """
+    This wrapper make non-mutable DSDL type mutable.
+    Meaning it allows you to set attributes after it was created.
+    Usage:
+    ```python
+    a = MutableDSDLType[DSDLType](DSDLType) # create mutable DSDL type
+    a.some_attribute = 42 # override some attribute
+    a.to_cyphal() # get back DSDL type with overridden attributes
+    """
+
+    def __getattr__(self, attr):
+        if attr in self.__dict__["_attributes"]:
+            return self._values[attr]
+        else:
+            return self.__dict__[attr]
+
+    def __setattr__(self, key, value):
+        if key in self.__dict__["_attributes"]:
+            self._values[key] = value
+        else:
+            self.__dict__[key] = value
+
+    def __init__(self, cls):
+        self.__dict__["_attributes"] = get_attribute_list(cls)
+        self.__dict__["_cls"] = cls
+        defaults = cls()
+        self.__dict__["_values"] = { k: get_attribute(defaults, k) for k in self._attributes }
+
+    def to_cyphal(self) -> T:
+        return self.__dict__["_cls"](**self.__dict__["_values"])
