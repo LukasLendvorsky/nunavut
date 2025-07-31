@@ -322,6 +322,12 @@ static_assert({{ ref }}_EXTENT_BYTES_ >= {{ ref }}_SERIALIZATION_BUFFER_SIZE_BYT
 
 {% macro _define_export_function(t) %}
 
+std::array<std::string, {{ t.fields_except_padding | length }}> {{ t | full_reference_name }}_attributes = {
+{%- for f in t.fields_except_padding %}
+    "{{ f.name }}"{%- if not loop.last %}, {% endif %}
+{%- endfor %}
+};
+
 void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
 {
     nanobind::class_<{{ t | full_reference_name }}>(m, "{{ t | short_reference_name }}")
@@ -340,7 +346,7 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
         .def_prop_ro_static("__FIXED_PORT_ID__", [](nanobind::handle){return {{ t | full_reference_name }}_FIXED_PORT_ID_;})
         {% endif %}
         .def_prop_ro_static("__DSDL_NAME__", [](nanobind::handle){return "{{t.full_name}}.{{t.version.major}}.{{t.version.minor}}";})
-        ;
+        .def_ro_static("__ATTRIBUTES__", &{{ t | full_reference_name }}_attributes);
 }
 {% endmacro %}
 

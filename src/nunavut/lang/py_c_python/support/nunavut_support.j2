@@ -129,6 +129,11 @@ def get_attribute(obj: Any, name: str) -> Any:
     except AttributeError:
         return getattr(obj, name + "_")
 
+def get_attribute_list(class_or_instance: Any) -> Any:
+    """
+    Returns a list of attributes of the DSDL type.
+    """
+    return class_or_instance.__ATTRIBUTES__
 
 def is_serializable(dtype: Any) -> bool:
     """
