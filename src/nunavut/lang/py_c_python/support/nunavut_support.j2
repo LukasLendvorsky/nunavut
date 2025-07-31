@@ -1,0 +1,175 @@
+from __future__ import annotations
+import sys
+from typing import TypeVar, Type, Sequence, cast, Any, Iterable
+import logging
+
+if sys.byteorder != "little":  # pragma: no cover
+    raise RuntimeError(
+        "BIG-ENDIAN PLATFORMS ARE NOT YET SUPPORTED. "
+        "The current serialization code assumes that the native byte order is little-endian. Since Cyphal uses "
+        "little-endian byte order in its serialized data representations, this assumption allows us to bypass data "
+        "transformation in many cases, resulting in zero-cost serialization and deserialization. "
+        "Big-endian platforms are unable to take advantage of that, requiring byte swapping for multi-byte entities; "
+        "fortunately, nowadays such platforms are uncommon. If you need to use this code on a big-endian platform, "
+        "please implement the missing code and submit a pull request upstream, then remove this exception."
+    )
+
+API_VERSION = 1
+"""
+This is the version of the API that the generated code expects to be available at runtime.
+"""
+
+__all__ = [
+    "serialize",
+    "deserialize",
+    "get_dsdl_name",
+    "get_num_bits",
+    "get_array_capacity",
+    "get_extent_bytes",
+    "get_fixed_port_id",
+    "get_attribute",
+    "set_attribute",
+    "is_serializable",
+    "is_message_type",
+    "is_service_type",
+]
+"""
+No API stability guarantees are made for this module except for those entities that are listed in __all__.
+"""
+
+_logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
+# ================================================== USER CODE API ==================================================
+
+
+def serialize(obj: Any) -> Iterable[memoryview]:
+    """
+    Constructs a serialized representation of the provided top-level object.
+    The resulting serialized representation is padded to one byte in accordance with the Cyphal specification.
+    The constructed serialized representation is returned as a sequence of byte-aligned fragments which must be
+    concatenated in order to obtain the final representation.
+    The objective of this model is to avoid copying data into a temporary buffer when possible.
+    Each yielded fragment is of type :class:`memoryview` pointing to raw unsigned bytes.
+    It is guaranteed that at least one fragment is always returned (which may be empty).
+    """
+    yield obj.__serialize__()
+
+
+def deserialize(
+        dtype: Type[T],
+        fragmented_serialized_representation: Sequence[memoryview]
+) -> T | None:
+    """
+    Constructs an instance of the supplied DSDL-generated data type from its serialized representation.
+    Returns None if the provided serialized representation is invalid.
+
+    This function will never raise an exception for invalid input data; the only possible outcome of an invalid data
+    being supplied is None at the output. A raised exception can only indicate an error in the deserialization logic.
+
+    .. important:: The constructed object may contain arrays referencing the memory allocated for the serialized
+        representation. Therefore, in order to avoid unintended data corruption, the caller should destroy all
+        references to the serialized representation after the invocation.
+
+    .. important:: The supplied fragments of the serialized representation should be writeable.
+        If they are not, some of the array-typed fields of the constructed object may be read-only.
+    """
+    bytes = b"".join(fragmented_serialized_representation)
+    obj = dtype.__deserialize__(bytes)
+
+    return cast(T, obj)
+
+
+def get_dsdl_name(class_or_instance: Any) -> str:
+    """ Returns name of DSDL type as a string. """
+    return class_or_instance.__DSDL_NAME__
+
+
+def get_num_bits(class_or_instance: Any, attr: str) -> int:
+    """ Returns number of bits for given attribute of DSDL type. """
+    return int(get_attribute(class_or_instance, attr + "_NUM_BITS_"))
+
+
+def get_array_capacity(class_or_instance: Any, a: str) -> int:
+    """ Returns capacity of array attribute of DSDL type."""
+    try:
+        return get_attribute(class_or_instance, a + "_CAPACITY")
+    except (TypeError, AttributeError):
+        return 0
+
+
+def get_extent_bytes(class_or_instance: Any) -> int:
+    """ Returns how many bytes DSDL type can use """
+    return int(class_or_instance.__EXTENT_BYTES__)
+
+
+def get_fixed_port_id(class_or_instance: Any) -> int | None:
+    """
+    Returns None if the supplied type has no fixed port-ID.
+    """
+    try:
+        out = int(class_or_instance.__FIXED_PORT_ID__)
+    except (TypeError, AttributeError):
+        return None
+    else:
+        assert 0 <= out < 2**16
+        return out
+
+
+def get_attribute(obj: Any, name: str) -> Any:
+    """
+    DSDL type attributes whose names can't be represented in Python (such as ``def`` or ``type``)
+    are suffixed with an underscore.
+    This function allows the caller to read arbitrary attributes referring to them by their original
+    DSDL names, e.g., ``def`` instead of ``def_``.
+
+    This function behaves like :func:`getattr` if the attribute does not exist.
+    """
+    try:
+        return getattr(obj, name)
+    except AttributeError:
+        return getattr(obj, name + "_")
+
+
+def set_attribute(obj: Any, name: str, value: Any) -> None:
+    """
+    DSDL type attributes whose names can't be represented in Python (such as ``def`` or ``type``)
+    are suffixed with an underscore.
+    This function allows the caller to assign arbitrary attributes referring to them by their original DSDL names,
+    e.g., ``def`` instead of ``def_``.
+
+    If the attribute does not exist, raises :class:`AttributeError`.
+    """
+    suffixed = name + "_"
+    # We can't call setattr() without asking first because if it doesn't exist it will be created,
+    # which would be disastrous.
+    if hasattr(obj, name):
+        setattr(obj, name, value)
+    elif hasattr(obj, suffixed):
+        setattr(obj, suffixed, value)
+    else:
+        raise AttributeError(name)
+
+
+def is_serializable(dtype: Any) -> bool:
+    """
+    Whether the passed type is a DSDL-generated serializable type.
+    """
+    return (hasattr(dtype, "__serialize__")
+            and hasattr(dtype, "__deserialize__"))
+
+
+def is_message_type(dtype: Any) -> bool:
+    """
+    Whether the passed type is generated from a DSDL message type.
+    """
+    return is_serializable(dtype) and not hasattr(
+        dtype, "Request") and not hasattr(dtype, "Response")
+
+
+def is_service_type(dtype: Any) -> bool:
+    """
+    Whether the passed type is generated from a DSDL service type, excluding its nested Request and Response types.
+    """
+    return (is_serializable(getattr(dtype, "Request", None))
+            and is_serializable(getattr(dtype, "Response", None)))
