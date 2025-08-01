@@ -168,7 +168,7 @@ class Language(metaclass=abc.ABCMeta):
     # | PROPERTIES
     # +-----------------------------------------------------------------------+
     @property
-    def default_extension(self) -> str:
+    def extension(self) -> str:
         """
         The extension to use for files generated in this language.
         """
@@ -514,18 +514,6 @@ class Language(metaclass=abc.ABCMeta):
         :return: A mapping of option names to option values.
         """
         return self._language_options
-
-    def get_filename_with_extension(self, path: pathlib.Path):
-        str_path = str(path)
-
-        if str_path.endswith(".j2"):
-            str_path = str_path[:-3]  # remove the .j2 extension
-
-        pos = str_path.rfind(".")
-        if pos == -1:
-            return path.with_suffix(self.default_extension)
-        else:
-            return pathlib.Path(str_path)
 
 
 # +---------------------------------------------------------------------------+

@@ -688,7 +688,9 @@ def filter_includes(
         omit_serialization_support = env.globals["nunavut"].support["omit"]
     except KeyError:
         omit_serialization_support = False
-    return IncludeGenerator(language, t, omit_serialization_support).generate_include_filepart_list(sort)
+    return IncludeGenerator(language, t, omit_serialization_support).generate_include_filepart_list(
+        language.extension, sort
+    )
 
 
 def filter_to_static_assertion_value(obj: typing.Any) -> int:

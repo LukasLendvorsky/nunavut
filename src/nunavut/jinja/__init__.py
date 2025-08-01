@@ -937,7 +937,7 @@ class SupportGenerator(CodeGenerator):
 
         generated = []  # type: typing.List[pathlib.Path]
         for resource in self.get_templates(omit_serialization_support):
-            target = target_language.get_filename_with_extension(target_path / resource.name)
+            target = (target_path / resource.name).with_suffix(target_language.extension)
             logger.info("Generating support file: %s", target)
             if resource.suffix == TEMPLATE_SUFFIX:
                 self._generate_header(resource, target, is_dryrun, allow_overwrite)

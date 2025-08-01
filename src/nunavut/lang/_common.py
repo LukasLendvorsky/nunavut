@@ -34,16 +34,17 @@ class IncludeGenerator:
         self._language = language
         self._omit_serialization_support = omit_serialization_support
 
-    def generate_include_filepart_list(self, sort: bool) -> typing.List[str]:
+    def generate_include_filepart_list(self, output_extension: str, sort: bool) -> typing.List[str]:
         """
         Generates a list of include file paths for a given datatype and language.
+        :param output_extension: The file extension to use for the include file paths.
         :param sort: If True the list of include file paths will be sorted.
         :return: A list of include file paths.
         """
         dep_types = self._language.get_dependency_builder(self._type).direct()
 
         path_list = [
-            self.make_path(dt, self._language).as_posix() for dt in dep_types.composite_types
+            self.make_path(dt, self._language, output_extension).as_posix() for dt in dep_types.composite_types
         ]
 
         namespace_path = pathlib.Path("")
@@ -51,7 +52,7 @@ class IncludeGenerator:
             namespace_path = namespace_path / pathlib.Path(namespace_part)
         if not self._omit_serialization_support:
             path_list += [
-                (namespace_path / self._language.get_filename_with_extension(pathlib.Path(p.name))).as_posix()
+                (namespace_path / pathlib.Path(p.name).with_suffix(output_extension)).as_posix()
                 for p in self._language.get_support_files(ResourceType.SERIALIZATION_SUPPORT)
             ]
 
@@ -71,6 +72,7 @@ class IncludeGenerator:
         cls,
         dt: pydsdl.CompositeType,
         language: typing.Optional[Language] = None,
+        output_extension: typing.Optional[str] = None,
     ) -> pathlib.Path:
         """
         Common method for creating a relative path to a datatype source file.
@@ -111,7 +113,12 @@ class IncludeGenerator:
         else:
             short_name = language.filter_short_reference_name(dt, id_type="path")
 
-        ns_path = language.get_filename_with_extension(pathlib.Path(*cls._make_ns_list(language, dt)) / pathlib.Path(short_name))
+        if output_extension is None:
+            output_extension = "" if language is None else language.extension
+
+        ns_path = pathlib.Path(*cls._make_ns_list(language, dt)) / pathlib.Path(short_name).with_suffix(
+            output_extension
+        )
         return ns_path
 
     # +-----------------------------------------------------------------------+
