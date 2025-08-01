@@ -41,9 +41,5 @@ def list_support_files(resource_type: ResourceType = ResourceType.ANY) -> typing
     """
     support_dir = pathlib.Path(__file__).parent
 
-    if resource_type in (ResourceType.ANY, ResourceType.TYPE_SUPPORT ) :
-        for path in support_dir.rglob("*.j2"):
-            yield path
-    else:
-        for path in support_dir.rglob("*.h.j2"):
-            yield path
+    for path in support_dir.rglob("*.j2"):
+        yield path
