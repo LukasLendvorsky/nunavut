@@ -63,9 +63,7 @@ static_assert( {{ "NUNAVUT_SUPPORT_LANGUAGE_OPTION_{}".format(key) | ln.c.macrof
               "{{ T.source_file_path.as_posix() }} is trying to use a serialization library that was compiled with "
               "different language options. This is dangerous and therefore not allowed." );
 {% endfor %}
-#ifdef __cplusplus
-extern "C" {
-#endif
+
 
 {% if T.has_fixed_port_id %}
 #define {{ T | full_reference_name }}_HAS_FIXED_PORT_ID_ true
@@ -77,7 +75,5 @@ extern "C" {
 
 {% block contents %}{% endblock %}
 
-#ifdef __cplusplus
-}
-#endif
+
 #endif // {{ include_guard }}
