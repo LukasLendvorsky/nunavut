@@ -17,10 +17,5 @@
 
 {{ generate_composite(T.response_type) }}
 
-void export_type_{{ T | full_reference_name }}(nanobind::module_ &m)
-{
-    auto submodule = m.def_submodule("{{ T | short_reference_name }}", "Service type {{ T.full_name }}");
-    export_type_{{ T.request_type | full_reference_name }}(submodule);
-    export_type_{{ T.response_type | full_reference_name }}(submodule);
-}
+extern void export_type_{{ T | full_reference_name }}(nanobind::module_ &m);
 {% endblock %}

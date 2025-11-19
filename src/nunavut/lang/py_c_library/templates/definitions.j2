@@ -175,7 +175,15 @@ static_assert({{ ref }}_EXTENT_BYTES_ >= {{ ref }}_SERIALIZATION_BUFFER_SIZE_BYT
 
 {% macro _define_export_union(t) %}
     {%- for f in t.fields_except_padding -%}
-        {%- if f.data_type is CompositeType %}
+        {%- if f.data_type is PrimitiveType %}
+        .def("__init__", // overloaded constructor for union with primitive type element
+             []({{ t | full_reference_name }}* self,
+                {{ f.data_type | type_from_primitive }} {{ f.name | id }}){
+                {{ t | full_reference_name }}_select_{{ f.name }}_(self);
+                    self->{{ f.name | id }} = {{ f.name | id }};
+                },
+                nanobind::arg("{{ f.name }}"))
+        {%- elif f.data_type is CompositeType %}
         .def("__init__", // overloaded constructor for union with composite type element
              []({{ t | full_reference_name }}* self,
                 {{ f.data_type | full_reference_name }} &{{ f.name | id }}){
@@ -487,10 +495,18 @@ void export_type_{{ t | full_reference_name }}(nanobind::module_ &m)
 {%- else %}{% assert False %}{# Not a valid composite type. #}
 {%- endif %}
 
-{{ _define_functions(t) }}
+{{ _declare_functions(t) }}
+
+extern std::string {{ t | full_reference_name }}_repr(const {{ t | full_reference_name }} &self);
+extern void export_type_{{ t | full_reference_name }}(nanobind::module_ &m);
+
+{% endmacro %}
+
+{# ----------------------------------------------------------------------------------------------------------------- #}
+{% macro generate_composite_impl(t) %}
+{{ _define_functions_impl(t) }}
 
 {{ _define_export_function(t) }}
-
 {% endmacro %}
 
 
@@ -593,66 +609,54 @@ struct  /// Array address equivalence guarantee: &elements[0] == &{{ name }}
 
 
 {# ----------------------------------------------------------------------------------------------------------------- #}
-{% macro _define_functions(t) %}
+{# Function declarations (prototypes only, for header files) #}
+{% macro _declare_functions(t) %}
 {%- if not nunavut.support.omit %}
-/// Serialize an instance into the provided buffer.
-/// The lifetime of the resulting serialized representation is independent of the original instance.
-/// This method may be slow for large objects (e.g., images, point clouds, radar samples), so in a later revision
-/// we may define a zero-copy alternative that keeps references to the original object where possible.
-///
-/// @param obj      The object to serialize.
-///
-/// @param buffer   The destination buffer. There are no alignment requirements.
-///                 @see {{ t | full_reference_name }}_SERIALIZATION_BUFFER_SIZE_BYTES_
-///
-/// @param inout_buffer_size_bytes  When calling, this is a pointer to the size of the buffer in bytes.
-///                                 Upon return this value will be updated with the size of the constructed serialized
-///                                 representation (in bytes); this value is then to be passed over to the transport
-///                                 layer. In case of error this value is undefined.
-///
-/// @returns Negative on error, zero on success.
-static inline {{ typename_error_type }} {{ t | full_reference_name }}_serialize_(
-    const {{ t | full_reference_name }}* const obj, {# -#}
-    {{ typename_byte }}* const buffer,  {# -#}
+{{ typename_error_type }} {{ t | full_reference_name }}_serialize_(
+    const {{ t | full_reference_name }}* const obj,
+    {{ typename_byte }}* const buffer,
+    {{ typename_unsigned_length }}* const inout_buffer_size_bytes);
+
+{{ typename_error_type }} {{ t | full_reference_name }}_deserialize_(
+    {{ t | full_reference_name }}* const out_obj,
+    const {{ typename_byte }}* buffer,
+    {{ typename_unsigned_length }}* const inout_buffer_size_bytes);
+
+void {{ t | full_reference_name }}_initialize_({{ t | full_reference_name }}* const out_obj);
+{%- endif %}
+
+{%- for f in t.fields_except_padding %}
+{%- if t.inner_type is UnionType %}
+void {{ t | full_reference_name }}_select_{{ f.name }}_({{ t | full_reference_name }}* const obj);
+{{ typename_boolean }} {{ t | full_reference_name }}_is_{{ f.name }}_(const {{ t | full_reference_name }}* const obj);
+{%- endif %}
+{% endfor %}
+{% endmacro %}
+
+
+{# ----------------------------------------------------------------------------------------------------------------- #}
+{# Function implementations (for .cpp files) #}
+{% macro _define_functions_impl(t) %}
+{%- if not nunavut.support.omit %}
+{{ typename_error_type }} {{ t | full_reference_name }}_serialize_(
+    const {{ t | full_reference_name }}* const obj,
+    {{ typename_byte }}* const buffer,
     {{ typename_unsigned_length }}* const inout_buffer_size_bytes)
 {
     {% from 'serialization.j2' import serialize -%}
     {{ serialize(t)|trim|remove_blank_lines }}
 }
 
-/// Deserialize an instance from the provided buffer.
-/// The lifetime of the resulting object is independent of the original buffer.
-/// This method may be slow for large objects (e.g., images, point clouds, radar samples), so in a later revision
-/// we may define a zero-copy alternative that keeps references to the original buffer where possible.
-///
-/// @param obj      The object to update from the provided serialized representation.
-///
-/// @param buffer   The source buffer containing the serialized representation. There are no alignment requirements.
-///                 If the buffer is shorter or longer than expected, it will be implicitly zero-extended or truncated,
-///                 respectively; see Specification for "implicit zero extension" and "implicit truncation" rules.
-///
-/// @param inout_buffer_size_bytes  When calling, this is a pointer to the size of the supplied serialized
-///                                 representation, in bytes. Upon return this value will be updated with the
-///                                 size of the consumed fragment of the serialized representation (in bytes),
-///                                 which may be smaller due to the implicit truncation rule, but it is guaranteed
-///                                 to never exceed the original buffer size even if the implicit zero extension rule
-///                                 was activated. In case of error this value is undefined.
-///
-/// @returns Negative on error, zero on success.
-static inline {{ typename_error_type }} {{ t | full_reference_name }}_deserialize_(
-    {{ t | full_reference_name }}* const out_obj, {# -#}
-    const {{ typename_byte }}* buffer, {# -#}
+{{ typename_error_type }} {{ t | full_reference_name }}_deserialize_(
+    {{ t | full_reference_name }}* const out_obj,
+    const {{ typename_byte }}* buffer,
     {{ typename_unsigned_length }}* const inout_buffer_size_bytes)
 {
     {% from 'deserialization.j2' import deserialize -%}
     {{ deserialize(t)|trim|remove_blank_lines }}
 }
 
-/// Initialize an instance to default values. Does nothing if @param out_obj is {{ valuetoken_null }}.
-/// This function intentionally leaves inactive elements uninitialized; for example, members of a variable-length
-/// array beyond its length are left uninitialized; aliased union memory that is not used by the first union field
-/// is left uninitialized, etc. If full zero-initialization is desired, just use memset(&obj, 0, sizeof(obj)).
-static inline void {{ t | full_reference_name }}_initialize_({{ t | full_reference_name }}* const out_obj)
+void {{ t | full_reference_name }}_initialize_({{ t | full_reference_name }}* const out_obj)
 {
     if (out_obj != {{ valuetoken_null }})
     {
@@ -668,8 +672,7 @@ static inline void {{ t | full_reference_name }}_initialize_({{ t | full_referen
 
 {%- for f in t.fields_except_padding %}
 {%- if t.inner_type is UnionType %}
-/// Mark option "{{ f.name }}" active without initializing it. Does nothing if @param obj is {{ valuetoken_null }}.
-static inline void {{ t | full_reference_name }}_select_{{ f.name }}_{# -#}
+void {{ t | full_reference_name }}_select_{{ f.name }}_{# -#}
                   ({{ t | full_reference_name }}* const obj)
 {
     if (obj != {{valuetoken_null}})
@@ -678,8 +681,7 @@ static inline void {{ t | full_reference_name }}_select_{{ f.name }}_{# -#}
     }
 }
 
-/// Check if option "{{ f.name }}" is active. Returns false if @param obj is {{ valuetoken_null }}.
-static inline {{ typename_boolean }} {{ t | full_reference_name }}_is_{{ f.name }}_{# -#}
+{{ typename_boolean }} {{ t | full_reference_name }}_is_{{ f.name }}_{# -#}
                               (const {{ t | full_reference_name }}* const obj)
 {
     return ((obj != {{ valuetoken_null }}) && (obj->_tag_ == {{ loop.index0 }}));

@@ -89,6 +89,7 @@ class Language(metaclass=abc.ABCMeta):
     WKCV_NAMED_VALUES = "named_values"
     WKCV_LANGUAGE_OPTIONS = "options"
     WKCV_LANGUAGE_OPTION_DEFAULTS = "defaults"
+    WKCV_IMPLEMENTATION_FILE_EXTENSION = "implementation_extension"
 
     @classmethod
     def default_filter_id_for_target(cls, instance: typing.Any) -> str:
@@ -173,6 +174,17 @@ class Language(metaclass=abc.ABCMeta):
         The extension to use for files generated in this language.
         """
         return self._config.get_config_value(self._section, self.WKCV_DEFINITION_FILE_EXTENSION)
+
+    @property
+    def implementation_extension(self) -> typing.Optional[str]:
+        """
+        The extension to use for implementation files generated in this language.
+        If None, no implementation files are generated.
+        """
+        try:
+            return self._config.get_config_value(self._section, self.WKCV_IMPLEMENTATION_FILE_EXTENSION)
+        except KeyError:
+            return None
 
     @property
     def namespace_output_stem(self) -> typing.Optional[str]:

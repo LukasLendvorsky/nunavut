@@ -378,6 +378,7 @@ nunavut.lang.html:
 
 nunavut.lang.py_c_library:
     extension: .h
+    implementation_extension: .cpp
     stable_support: false
     namespace_file_stem: all
     has_standard_namespace_files: true
