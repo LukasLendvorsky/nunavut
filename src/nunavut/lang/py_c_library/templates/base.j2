@@ -58,6 +58,9 @@
 {% for n in T | includes -%}
 #include {{ n }}
 {% endfor %}
+#include <string>
+#include <nanobind/nanobind.h>
+
 {% for key, value in options.items() -%}
 static_assert( {{ "NUNAVUT_SUPPORT_LANGUAGE_OPTION_{}".format(key) | ln.c.macrofy }} == {{ value | to_static_assertion_value }},
               "{{ T.source_file_path.as_posix() }} is trying to use a serialization library that was compiled with "

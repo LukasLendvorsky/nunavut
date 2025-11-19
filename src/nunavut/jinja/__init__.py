@@ -793,7 +793,7 @@ class DSDLCodeGenerator(CodeGenerator):
         provider = self.namespace.get_all_types if self.generate_namespace_types else self.namespace.get_all_datatypes
         for parsed_type, output_path in provider():
             logger.info("Generating: %s", parsed_type)
-            generated.append(self._generate_type(parsed_type, output_path, is_dryrun, allow_overwrite))
+            generated.extend(self._generate_type(parsed_type, output_path, is_dryrun, allow_overwrite))
         return generated
 
     # +-----------------------------------------------------------------------+
@@ -864,13 +864,29 @@ class DSDLCodeGenerator(CodeGenerator):
 
     def _generate_type(
         self, input_type: pydsdl.CompositeType, output_path: pathlib.Path, is_dryrun: bool, allow_overwrite: bool
-    ) -> pathlib.Path:
+    ) -> typing.List[pathlib.Path]:
         template_name = self.filter_type_to_template(input_type)
         template = self._env.get_template(template_name)
         template_gen = template.generate(T=input_type)
         if not is_dryrun:
             self._generate_code(output_path, template, template_gen, allow_overwrite)
-        return output_path
+        generated_paths = [output_path]
+
+        impl_extension = self.language_context.get_target_language().implementation_extension
+        if impl_extension is not None:
+            impl_template_name = pathlib.Path(template_name).stem + "_impl" + TEMPLATE_SUFFIX
+            try:
+                impl_template = self._env.get_template(impl_template_name)
+            except Exception:
+                impl_template = None
+            if impl_template is not None:
+                impl_output_path = output_path.with_suffix(impl_extension)
+                impl_gen = impl_template.generate(T=input_type)
+                if not is_dryrun:
+                    self._generate_code(impl_output_path, impl_template, impl_gen, allow_overwrite)
+                generated_paths.append(impl_output_path)
+
+        return generated_paths
 
 
 # +---------------------------------------------------------------------------+

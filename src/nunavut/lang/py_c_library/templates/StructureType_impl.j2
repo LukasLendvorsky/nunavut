@@ -1,0 +1,18 @@
+{#-
+ # Copyright (C) OpenCyphal Development Team  <opencyphal.org>
+ # This software is distributed under the terms of the MIT License.
+-#}
+
+// This is an AUTO-GENERATED Cyphal DSDL data type implementation. Curious? See https://opencyphal.org.
+// You shouldn't attempt to edit this file.
+//
+// Source file:   {{ T.source_file_path.name }}
+// Full name:     {{ T.full_name }}
+// Version:       {{ T.version.major }}.{{ T.version.minor }}
+
+#include "{{ T | type_to_include_path }}"
+#include <python_binding.h>
+
+{% from 'definitions.j2' import generate_composite_impl %}
+
+{{ generate_composite_impl(T) }}
