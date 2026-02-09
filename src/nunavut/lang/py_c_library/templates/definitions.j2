@@ -343,7 +343,7 @@ std::string  {{ t | full_reference_name }}_repr(const {{ t | full_reference_name
     ss << "{{ t | short_reference_name }}(";
     {%- for f in t.fields_except_padding %}
     ss << "{{ f.name }}=";
-       {%- if f.data_type is PrimitiveType and f.data_type.bit_length == 8 %}
+       {%- if f.data_type is PrimitiveType and f.data_type.bit_length <= 8 %}
     ss << (int)self.{{ f.name | id }}; // force print as integer, not char
        {%- elif f.data_type is PrimitiveType %}
     ss << self.{{ f.name | id }};
