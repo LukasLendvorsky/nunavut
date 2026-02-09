@@ -337,12 +337,7 @@ std::array<std::string, {{ t.fields_except_padding | length }}> {{ t | full_refe
 };
 
 
-std::string  {{ t | full_reference_name }}_repr(const {{ t | full_reference_name }} &self)
-{
-    std::stringstream ss;
-    ss << "{{ t | short_reference_name }}(";
-    {%- for f in t.fields_except_padding %}
-    ss << "{{ f.name }}=";
+{% macro _repr_print_value(t, f) -%}
        {%- if f.data_type is PrimitiveType and f.data_type.bit_length <= 8 %}
     ss << (int)self.{{ f.name | id }}; // force print as integer, not char
        {%- elif f.data_type is PrimitiveType %}
@@ -350,16 +345,85 @@ std::string  {{ t | full_reference_name }}_repr(const {{ t | full_reference_name
        {%- elif f.data_type is CompositeType %}
     ss << {{ f.data_type | full_reference_name }}_repr(self.{{ f.name | id }});
        {%- elif f.data_type is FixedLengthArrayType %}
-    ss << "[array]";
+           {%- if f.data_type.element_type is BooleanType %}
+    ss << "[";
+    for (size_t i = 0; i < {{ f.data_type.capacity }}; ++i) {
+        if (i > 0) ss << ", ";
+        ss << ((self.{{ f.name | id }}_bitpacked_[i / 8U] & (1U << (i % 8U))) ? "true" : "false");
+    }
+    ss << "]";
+           {%- else %}
+    ss << "[";
+    for (size_t i = 0; i < {{ f.data_type.capacity }}; ++i) {
+        if (i > 0) ss << ", ";
+               {%- if f.data_type.element_type is CompositeType %}
+        ss << {{ f.data_type.element_type | full_reference_name }}_repr(self.{{ f.name | id }}[i]);
+               {%- elif f.data_type.element_type is PrimitiveType and f.data_type.element_type.bit_length <= 8 %}
+        ss << (int)self.{{ f.name | id }}[i];
+               {%- else %}
+        ss << self.{{ f.name | id }}[i];
+               {%- endif %}
+    }
+    ss << "]";
+           {%- endif %}
        {%- elif f.data_type is VariableLengthArrayType %}
-    ss << "[array]";
+           {%- if f.data_type.string_like %}
+    ss << "\"";
+    for (size_t i = 0; i < self.{{ f.name | id }}.count && i < {{ f.data_type.capacity }}U; ++i) {
+        uint8_t c = self.{{ f.name | id }}.elements[i];
+        if (c >= 0x20 && c <= 0x7E) {
+            ss << (char)c;
+        } else {
+            ss << "\\x" << std::hex << std::setfill('0') << std::setw(2) << (int)c << std::dec;
+        }
+    }
+    ss << "\"";
+           {%- elif f.data_type.element_type is BooleanType %}
+    ss << "[";
+    for (size_t i = 0; i < self.{{ f.name | id }}.count && i < {{ f.data_type.capacity }}U; ++i) {
+        if (i > 0) ss << ", ";
+        ss << ((self.{{ f.name | id }}.bitpacked[i / 8U] & (1U << (i % 8U))) ? "true" : "false");
+    }
+    ss << "]";
+           {%- else %}
+    ss << "[";
+    for (size_t i = 0; i < self.{{ f.name | id }}.count && i < {{ f.data_type.capacity }}U; ++i) {
+        if (i > 0) ss << ", ";
+               {%- if f.data_type.element_type is CompositeType %}
+        ss << {{ f.data_type.element_type | full_reference_name }}_repr(self.{{ f.name | id }}.elements[i]);
+               {%- elif f.data_type.element_type is PrimitiveType and f.data_type.element_type.bit_length <= 8 %}
+        ss << (int)self.{{ f.name | id }}.elements[i];
+               {%- else %}
+        ss << self.{{ f.name | id }}.elements[i];
+               {%- endif %}
+    }
+    ss << "]";
+           {%- endif %}
        {%- else -%}
          {% assert False %}{# Not a valid field type. #}
        {%- endif -%}
+{%- endmacro %}
+
+std::string  {{ t | full_reference_name }}_repr(const {{ t | full_reference_name }} &self)
+{
+    std::stringstream ss;
+    ss << "{{ t | short_reference_name }}(";
+{%- if t.inner_type is UnionType %}
+    {%- for f in t.fields_except_padding %}
+    {{ "} else " if not loop.first else "" }}if ({{ t | full_reference_name }}_is_{{ f.name }}_(&self)) {
+        ss << "{{ f.name }}=";
+        {{ _repr_print_value(t, f) }}
+    {%- endfor %}
+    }
+{%- else %}
+    {%- for f in t.fields_except_padding %}
+    ss << "{{ f.name }}=";
+    {{- _repr_print_value(t, f) }}
        {%- if not loop.last %}
     ss << ", ";
        {%- endif %}
     {%- endfor %}
+{%- endif %}
     ss << ")";
     return ss.str();
 }
