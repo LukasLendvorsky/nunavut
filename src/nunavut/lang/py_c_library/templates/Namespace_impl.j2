@@ -3,15 +3,7 @@
 // Generated at:  {{ now_utc }} UTC
 // Namespace:     {{ T.full_name }}
 
-#include <nanobind/nanobind.h>
-
-{%- for t, _ in T.get_nested_types() %}
-extern void export_type_{{ t | full_reference_name }}(nanobind::module_ & m);
-{%- endfor %}
-
-{% for type in T.get_nested_namespaces()%}
-extern void export_namespace_{{ type | macrofy }}(nanobind::module_ & m);
-{% endfor %}
+#include "{{ T | namespace_relative_path }}"
 
 void export_namespace_{{ T | macrofy}}(nanobind::module_ & m){
     auto submodule = m.def_submodule("{{ T._namespace_components[-1] }}", "namespace {{ T.full_name }}");
