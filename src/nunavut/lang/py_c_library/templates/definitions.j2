@@ -627,8 +627,20 @@ void {{ t | full_reference_name }}_initialize_({{ t | full_reference_name }}* co
 
 {%- for f in t.fields_except_padding %}
 {%- if t.inner_type is UnionType %}
-void {{ t | full_reference_name }}_select_{{ f.name }}_({{ t | full_reference_name }}* const obj);
-{{ typename_boolean }} {{ t | full_reference_name }}_is_{{ f.name }}_(const {{ t | full_reference_name }}* const obj);
+static inline void {{ t | full_reference_name }}_select_{{ f.name }}_{# -#}
+                  ({{ t | full_reference_name }}* const obj)
+{
+    if (obj != {{valuetoken_null}})
+    {
+        obj->_tag_ = {{ loop.index0 }};
+    }
+}
+
+static inline {{ typename_boolean }} {{ t | full_reference_name }}_is_{{ f.name }}_{# -#}
+                              (const {{ t | full_reference_name }}* const obj)
+{
+    return ((obj != {{ valuetoken_null }}) && (obj->_tag_ == {{ loop.index0 }}));
+}
 {%- endif %}
 {% endfor %}
 {% endmacro %}
@@ -669,23 +681,4 @@ void {{ t | full_reference_name }}_initialize_({{ t | full_reference_name }}* co
 }
 
 {%- endif %}  {# if not nunavut.support.omit #}
-
-{%- for f in t.fields_except_padding %}
-{%- if t.inner_type is UnionType %}
-void {{ t | full_reference_name }}_select_{{ f.name }}_{# -#}
-                  ({{ t | full_reference_name }}* const obj)
-{
-    if (obj != {{valuetoken_null}})
-    {
-        obj->_tag_ = {{ loop.index0 }};
-    }
-}
-
-{{ typename_boolean }} {{ t | full_reference_name }}_is_{{ f.name }}_{# -#}
-                              (const {{ t | full_reference_name }}* const obj)
-{
-    return ((obj != {{ valuetoken_null }}) && (obj->_tag_ == {{ loop.index0 }}));
-}
-{%- endif %}
-{% endfor %}
 {% endmacro %}
