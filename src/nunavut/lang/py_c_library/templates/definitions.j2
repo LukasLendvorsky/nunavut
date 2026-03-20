@@ -191,14 +191,6 @@ static_assert({{ ref }}_EXTENT_BYTES_ >= {{ ref }}_SERIALIZATION_BUFFER_SIZE_BYT
                     self->{{ f.name | id }} = {{ f.name | id }};
                 },
                 nanobind::arg("{{ f.name }}"))
-        {%- elif f.data_type is PrimitiveType %}
-        .def("__init__",
-            []({{ t | full_reference_name }}* self,
-                {{ f.data_type | type_from_primitive }} {{ f.name | id }}){
-                    {{ t | full_reference_name }}_select_{{ f.name }}_(self);
-                    self->{{ f.name | id }} = {{ f.name | id }};
-                },
-                nanobind::arg("{{ f.name }}"))
         {%- elif f.data_type is FixedLengthArrayType %}
         .def("__init__", // overloaded constructor for union with FixedLengthArrayType
             {%- if f.data_type.element_type.bit_length == 8 %}

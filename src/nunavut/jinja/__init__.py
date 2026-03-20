@@ -344,9 +344,9 @@ class CodeGenerator(nunavut._generators.AbstractGenerator):
         assert impl_extension is not None
         impl_output_path = output_path.with_suffix(impl_extension)
         impl_gen = impl_template.generate(**(template_vars or {}))
+        logger.info("Generating impl file: %s", impl_output_path)
         if not is_dryrun:
             self._generate_code(impl_output_path, impl_template, impl_gen, allow_overwrite)
-        logger.info("Generating impl file: %s", impl_output_path)
         return impl_output_path
 
     def _generate_code(
