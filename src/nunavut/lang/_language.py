@@ -181,10 +181,7 @@ class Language(metaclass=abc.ABCMeta):
         The extension to use for implementation files generated in this language.
         If None, no implementation files are generated.
         """
-        try:
-            return self._config.get_config_value(self._section, self.WKCV_IMPLEMENTATION_FILE_EXTENSION)
-        except KeyError:
-            return None
+        return self._config.get_config_value(self._section, self.WKCV_IMPLEMENTATION_FILE_EXTENSION, None)
 
     @property
     def namespace_output_stem(self) -> typing.Optional[str]:
