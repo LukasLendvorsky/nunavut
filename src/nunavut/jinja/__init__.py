@@ -27,6 +27,7 @@ from nunavut._utilities import TEMPLATE_SUFFIX, ResourceSearchPolicy, ResourceTy
 
 from .environment import CodeGenEnvironmentBuilder
 from .jinja2 import Template
+from .jinja2.exceptions import TemplateNotFound
 from .loaders import DEFAULT_TEMPLATE_PATH, DSDLTemplateLoader
 
 logger = logging.getLogger(__name__)
@@ -307,6 +308,46 @@ class CodeGenerator(nunavut._generators.AbstractGenerator):
         remainder = line_buffer.getvalue()
         if len(remainder) > 0:
             cls._filter_and_write_line((remainder, ""), output_file, line_pps)
+
+    def _find_impl_template(self, base_template_name: str) -> typing.Optional[Template]:
+        """
+        Look up a companion ``_impl`` template for the given base template name.
+        Returns None if the language has no implementation_extension or if no
+        companion template exists.
+        """
+        impl_extension = self.language_context.get_target_language().implementation_extension
+        if impl_extension is None:
+            return None
+        impl_template_name = pathlib.Path(base_template_name).stem + "_impl" + TEMPLATE_SUFFIX
+        try:
+            return self._env.get_template(impl_template_name)
+        except TemplateNotFound:
+            return None
+
+    def _generate_impl_companion(
+        self,
+        base_template_name: str,
+        output_path: pathlib.Path,
+        is_dryrun: bool,
+        allow_overwrite: bool,
+        template_vars: typing.Optional[typing.Dict[str, typing.Any]] = None,
+    ) -> typing.Optional[pathlib.Path]:
+        """
+        If a companion ``_impl`` template exists for *base_template_name*, generate
+        the implementation file next to *output_path* (with the language's
+        implementation extension).  Returns the generated path, or None.
+        """
+        impl_template = self._find_impl_template(base_template_name)
+        if impl_template is None:
+            return None
+        impl_extension = self.language_context.get_target_language().implementation_extension
+        assert impl_extension is not None
+        impl_output_path = output_path.with_suffix(impl_extension)
+        impl_gen = impl_template.generate(**(template_vars or {}))
+        if not is_dryrun:
+            self._generate_code(impl_output_path, impl_template, impl_gen, allow_overwrite)
+        logger.info("Generating impl file: %s", impl_output_path)
+        return impl_output_path
 
     def _generate_code(
         self,
@@ -872,19 +913,11 @@ class DSDLCodeGenerator(CodeGenerator):
             self._generate_code(output_path, template, template_gen, allow_overwrite)
         generated_paths = [output_path]
 
-        impl_extension = self.language_context.get_target_language().implementation_extension
-        if impl_extension is not None:
-            impl_template_name = pathlib.Path(template_name).stem + "_impl" + TEMPLATE_SUFFIX
-            try:
-                impl_template = self._env.get_template(impl_template_name)
-            except Exception:
-                impl_template = None
-            if impl_template is not None:
-                impl_output_path = output_path.with_suffix(impl_extension)
-                impl_gen = impl_template.generate(T=input_type)
-                if not is_dryrun:
-                    self._generate_code(impl_output_path, impl_template, impl_gen, allow_overwrite)
-                generated_paths.append(impl_output_path)
+        impl_path = self._generate_impl_companion(
+            template_name, output_path, is_dryrun, allow_overwrite, template_vars={"T": input_type}
+        )
+        if impl_path is not None:
+            generated_paths.append(impl_path)
 
         return generated_paths
 
